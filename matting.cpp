@@ -44,10 +44,8 @@ int main() {
   int height = 512;
   int raise = 9;
 
-  unsigned char *data, *old_data;
   unsigned char* originals[raise][2];
-  data = load_image("test.ppm", width, height, 3);
-  originals[9][0] = data;
+  originals[9][0] = load_image("test.ppm", width, height, 3);
   save_image("final_9.ppm", width, height, 3, originals[9][0]);
 
   while (raise >= 0) {
@@ -55,38 +53,38 @@ int main() {
 
     // Height half
     height = height/2;
-    old_data = data;
-    data = new unsigned char[width*height*3];
-    originals[raise][1] = data;
+    originals[raise][1] = new unsigned char[width*height*3];
   
     for (int y=0; y<height; y++) {
       for (int x=0; x<width; x++) {
         for (int c=0; c<3; c++) {
-          data[(y*width+x)*3+c] = (old_data[(2*y*width+x)*3+c] + old_data[((2*y+1)*width+x)*3+c])/2;
+          originals[raise][1][(y*width+x)*3+c] =
+            (originals[raise+1][0][(2*y*width+x)*3+c] +
+             originals[raise+1][0][((2*y+1)*width+x)*3+c])/2;
         }
       }
     }
 
     static char buffer[100];
     snprintf(buffer, 100, "final_%i_h.ppm", raise);
-    save_image(buffer, width, height, 3, data);
+    save_image(buffer, width, height, 3, originals[raise][1]);
 
     // Width half
     width = width/2;
-    old_data = data;
-    data = new unsigned char[width*height*3];
-    originals[raise][1] = data;
+    originals[raise][0] = new unsigned char[width*height*3];
   
     for (int y=0; y<height; y++) {
       for (int x=0; x<width; x++) {
         for (int c=0; c<3; c++) {
-          data[(y*width+x)*3+c] = (old_data[(y*width*2+2*x)*3+c] + old_data[(y*width*2+2*x+1)*3+c])/2;
+          originals[raise][0][(y*width+x)*3+c] =
+            (originals[raise][1][(y*width*2+2*x)*3+c] +
+             originals[raise][1][(y*width*2+2*x+1)*3+c])/2;
         }
       }
     }
 
     snprintf(buffer, 100, "final_%i.ppm", raise);
-    save_image(buffer, width, height, 3, data);
+    save_image(buffer, width, height, 3, originals[raise][0]);
   }
 
 
