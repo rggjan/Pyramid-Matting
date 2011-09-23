@@ -42,10 +42,59 @@ save_image (const char* filename, int dimx, int dimy, int num_colors, unsigned c
 int main() {
   int width = 512;
   int height = 512;
+  int raise = 9;
 
-  unsigned char* original = load_image("test.ppm", width, height, 3);
-  unsigned char* mask = load_image("trimap.pnm", width, height, 1);
-  unsigned char* final = new unsigned char[width*height*3];
+  unsigned char *data, *old_data;
+  unsigned char* originals[raise][2];
+  data = load_image("test.ppm", width, height, 3);
+  originals[9][0] = data;
+  save_image("final_9.ppm", width, height, 3, originals[9][0]);
+
+  while (raise >= 0) {
+    raise--;
+
+    // Height half
+    height = height/2;
+    old_data = data;
+    data = new unsigned char[width*height*3];
+    originals[raise][1] = data;
+  
+    for (int y=0; y<height; y++) {
+      for (int x=0; x<width; x++) {
+        for (int c=0; c<3; c++) {
+          data[(y*width+x)*3+c] = (old_data[(2*y*width+x)*3+c] + old_data[((2*y+1)*width+x)*3+c])/2;
+        }
+      }
+    }
+
+    static char buffer[100];
+    snprintf(buffer, 100, "final_%i_h.ppm", raise);
+    save_image(buffer, width, height, 3, data);
+
+    // Width half
+    width = width/2;
+    old_data = data;
+    data = new unsigned char[width*height*3];
+    originals[raise][1] = data;
+  
+    for (int y=0; y<height; y++) {
+      for (int x=0; x<width; x++) {
+        for (int c=0; c<3; c++) {
+          data[(y*width+x)*3+c] = (old_data[(y*width*2+2*x)*3+c] + old_data[(y*width*2+2*x+1)*3+c])/2;
+        }
+      }
+    }
+
+    snprintf(buffer, 100, "final_%i.ppm", raise);
+    save_image(buffer, width, height, 3, data);
+  }
+
+
+
+/*  unsigned char* mask = load_image("trimap.pnm", width, height, 1);
+  unsigned char* final = new unsigned char[width*height*3];*/
+
+  /*
 
   int fg[3];
   fg[0] = 0;
@@ -82,9 +131,9 @@ int main() {
   printf("bg: %i/%i/%i\n", bg[0]/bg_num, bg[1]/bg_num, bg[2]/bg_num);
   printf("%%bg: %f\n", ((double)bg_num)/((double)width*height)*100);
 
-  save_image("final.ppm", width, height, 3, final);
+  save_image("final.ppm", width, height, 3, final);*/
 
-  delete[] original;
+  /*delete[] original;
   delete[] mask;
-  delete[] final;
+  delete[] final;*/
 }
