@@ -44,14 +44,17 @@ int main() {
   int height = 512;
 
   unsigned char* original = load_image("test.ppm", width, height, 3);
-  unsigned char* mask = load_image("trimap.ppm", width, height, 1);
+  unsigned char* mask = load_image("trimap.pnm", width, height, 1);
   unsigned char* final = new unsigned char[width*height*3];
 
   for (int y=0; y<height; y++) {
     for (int x=0; x<width; x++) {
       for (int color=0; color<3; color++) {
         int index = y*width*3+x*3+color;
-        final[index] = original[index]*mask[y*width+x];
+        if (mask[y*width+x] == 0)
+          final[index] = original[index];
+        else
+          final[index] = 0;
       }
     }
   }
