@@ -44,9 +44,35 @@ int main() {
   int height = 512;
   int raise = 9;
 
+  unsigned char* mask = load_image("trimap.pnm", width, height, 1);
+
   unsigned char* originals[raise][2];
+  unsigned char* foregrounds[raise][2];
+  double* foreground_ps[raise][2];
+
   originals[9][0] = load_image("test.ppm", width, height, 3);
+  foregrounds[9][0] = new unsigned char[width*height*3];
+  foreground_ps[9][0] = new double[width*height];
+    
+  for (int y=0; y<height; y++) {
+    for (int x=0; x<width; x++) {
+      if (mask[width*y+x] == 255) {
+        foreground_ps[9][0][width*y+x] = 1;
+        for (int c=0; c<3; c++) {
+          foregrounds[9][0][(width*y+x)*3+c] =
+            originals[9][0][(width*y+x)*3+c];
+        }
+      } else {
+        foreground_ps[9][0][width*y+x] = 0;
+        for (int c=0; c<3; c++) {
+          foregrounds[9][0][(width*y+x)*3+c] = 0;
+        }
+      }
+    }
+  }
+
   save_image("final_9.ppm", width, height, 3, originals[9][0]);
+  save_image("foregrounds_9.ppm", width, height, 3, foregrounds[9][0]);
 
   while (raise >= 0) {
     raise--;
@@ -54,13 +80,26 @@ int main() {
     // Height half
     height = height/2;
     originals[raise][1] = new unsigned char[width*height*3];
+    foregrounds[raise][1] = new unsigned char[width*height*3];
+    foreground_ps[raise][1] = new double[width*height];
   
     for (int y=0; y<height; y++) {
       for (int x=0; x<width; x++) {
+        foreground_ps[raise][1][y*width+x] =
+          (foreground_ps[raise+1][0][2*y*width+x] +
+           foreground_ps[raise+1][0][(2*y+1)*width+x])/2;
+
         for (int c=0; c<3; c++) {
           originals[raise][1][(y*width+x)*3+c] =
             (originals[raise+1][0][(2*y*width+x)*3+c] +
              originals[raise+1][0][((2*y+1)*width+x)*3+c])/2;
+
+          foregrounds[raise][1][(y*width+x)*3+c] =
+            (foregrounds[raise+1][0][(2*y*width+x)*3+c]*
+             foreground_ps[raise+1][0][2*y*width+x] +
+             foregrounds[raise+1][0][((2*y+1)*width+x)*3+c]*
+             foreground_ps[raise+1][0][(2*y+1)*width+x])/
+             foreground_ps[raise][1][y*width+x]/2;
         }
       }
     }
@@ -68,6 +107,9 @@ int main() {
     static char buffer[100];
     snprintf(buffer, 100, "final_%i_h.ppm", raise);
     save_image(buffer, width, height, 3, originals[raise][1]);
+    
+    snprintf(buffer, 100, "foregrounds_%i_h.ppm", raise);
+    save_image(buffer, width, height, 3, foregrounds[raise][1]);
 
     // Width half
     width = width/2;
@@ -89,8 +131,7 @@ int main() {
 
 
 
-/*  unsigned char* mask = load_image("trimap.pnm", width, height, 1);
-  unsigned char* final = new unsigned char[width*height*3];*/
+/*  unsigned char* final = new unsigned char[width*height*3];*/
 
   /*
 
