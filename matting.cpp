@@ -49,32 +49,49 @@ int main() {
   unsigned char* originals[raise][2];
   unsigned char* foregrounds[raise][2];
   double* foreground_ps[raise][2];
+  unsigned char* backgrounds[raise][2];
+  double* background_ps[raise][2];
 
   originals[9][0] = load_image("test.ppm", width, height, 3);
   foregrounds[9][0] = new unsigned char[width*height*3];
   foreground_ps[9][0] = new double[width*height];
+  backgrounds[9][0] = new unsigned char[width*height*3];
+  background_ps[9][0] = new double[width*height];
     
   for (int y=0; y<height; y++) {
     for (int x=0; x<width; x++) {
       if (mask[width*y+x] == 255) {
         foreground_ps[9][0][width*y+x] = 1;
+        background_ps[9][0][width*y+x] = 0;
         for (int c=0; c<3; c++) {
+          backgrounds[9][0][(width*y+x)*3+c] = 0;
           foregrounds[9][0][(width*y+x)*3+c] =
+            originals[9][0][(width*y+x)*3+c];
+        }
+      } else if (mask[width*y+x] == 0) {
+        foreground_ps[9][0][width*y+x] = 0;
+        background_ps[9][0][width*y+x] = 1;
+        for (int c=0; c<3; c++) {
+          foregrounds[9][0][(width*y+x)*3+c] = 0;
+          backgrounds[9][0][(width*y+x)*3+c] =
             originals[9][0][(width*y+x)*3+c];
         }
       } else {
         foreground_ps[9][0][width*y+x] = 0;
+        background_ps[9][0][width*y+x] = 0;
         for (int c=0; c<3; c++) {
           foregrounds[9][0][(width*y+x)*3+c] = 0;
+          backgrounds[9][0][(width*y+x)*3+c] = 0;
         }
       }
     }
   }
 
-  save_image("final_9.ppm", width, height, 3, originals[9][0]);
-  save_image("foregrounds_9.ppm", width, height, 3, foregrounds[9][0]);
+  save_image("results/final_9.ppm", width, height, 3, originals[9][0]);
+  save_image("results/foregrounds_9.ppm", width, height, 3, foregrounds[9][0]);
+  save_image("results/backgrounds_9.ppm", width, height, 3, backgrounds[9][0]);
 
-  while (raise >= 0) {
+  while (raise > 0) {
     raise--;
 
     // Height half
@@ -82,12 +99,17 @@ int main() {
     originals[raise][1] = new unsigned char[width*height*3];
     foregrounds[raise][1] = new unsigned char[width*height*3];
     foreground_ps[raise][1] = new double[width*height];
+    backgrounds[raise][1] = new unsigned char[width*height*3];
+    background_ps[raise][1] = new double[width*height];
   
     for (int y=0; y<height; y++) {
       for (int x=0; x<width; x++) {
         foreground_ps[raise][1][y*width+x] =
           (foreground_ps[raise+1][0][2*y*width+x] +
            foreground_ps[raise+1][0][(2*y+1)*width+x])/2;
+        background_ps[raise][1][y*width+x] =
+          (background_ps[raise+1][0][2*y*width+x] +
+           background_ps[raise+1][0][(2*y+1)*width+x])/2;
 
         for (int c=0; c<3; c++) {
           originals[raise][1][(y*width+x)*3+c] =
@@ -100,28 +122,45 @@ int main() {
              foregrounds[raise+1][0][((2*y+1)*width+x)*3+c]*
              foreground_ps[raise+1][0][(2*y+1)*width+x])/
              foreground_ps[raise][1][y*width+x]/2;
+          
+          backgrounds[raise][1][(y*width+x)*3+c] =
+            (backgrounds[raise+1][0][(2*y*width+x)*3+c]*
+             background_ps[raise+1][0][2*y*width+x] +
+             backgrounds[raise+1][0][((2*y+1)*width+x)*3+c]*
+             background_ps[raise+1][0][(2*y+1)*width+x])/
+             background_ps[raise][1][y*width+x]/2;
         }
       }
     }
 
     static char buffer[100];
-    snprintf(buffer, 100, "final_%i_h.ppm", raise);
+    snprintf(buffer, 100, "results/final_%i_h.ppm", raise);
     save_image(buffer, width, height, 3, originals[raise][1]);
     
-    snprintf(buffer, 100, "foregrounds_%i_h.ppm", raise);
+    snprintf(buffer, 100, "results/foregrounds_%i_h.ppm", raise);
     save_image(buffer, width, height, 3, foregrounds[raise][1]);
+    
+    snprintf(buffer, 100, "results/backgrounds_%i_h.ppm", raise);
+    save_image(buffer, width, height, 3, backgrounds[raise][1]);
 
     // Width half
     width = width/2;
     originals[raise][0] = new unsigned char[width*height*3];
     foregrounds[raise][0] = new unsigned char[width*height*3];
     foreground_ps[raise][0] = new double[width*height];
+    
+    backgrounds[raise][0] = new unsigned char[width*height*3];
+    background_ps[raise][0] = new double[width*height];
 
     for (int y=0; y<height; y++) {
       for (int x=0; x<width; x++) {
         foreground_ps[raise][0][y*width+x] =
           (foreground_ps[raise][1][y*width*2+x*2] +
            foreground_ps[raise][1][y*width*2+x*2+1])/2;
+
+        background_ps[raise][0][y*width+x] =
+          (background_ps[raise][1][y*width*2+x*2] +
+           background_ps[raise][1][y*width*2+x*2+1])/2;
 
         for (int c=0; c<3; c++) {
           originals[raise][0][(y*width+x)*3+c] =
@@ -134,15 +173,25 @@ int main() {
              foregrounds[raise][1][(y*width*2+x*2+1)*3+c]*
              foreground_ps[raise][1][y*width*2+x*2+1])/
              foreground_ps[raise][0][y*width+x]/2;
+          
+          backgrounds[raise][0][(y*width+x)*3+c] =
+            (backgrounds[raise][1][(y*width*2+x*2)*3+c]*
+             background_ps[raise][1][y*width*2+x*2] +
+             backgrounds[raise][1][(y*width*2+x*2+1)*3+c]*
+             background_ps[raise][1][y*width*2+x*2+1])/
+             background_ps[raise][0][y*width+x]/2;
         }
       }
     }
 
-    snprintf(buffer, 100, "final_%i.ppm", raise);
+    snprintf(buffer, 100, "results/final_%i.ppm", raise);
     save_image(buffer, width, height, 3, originals[raise][0]);
     
-    snprintf(buffer, 100, "foregrounds_%i.ppm", raise);
+    snprintf(buffer, 100, "results/foregrounds_%i.ppm", raise);
     save_image(buffer, width, height, 3, foregrounds[raise][0]);
+    
+    snprintf(buffer, 100, "results/backgrounds_%i.ppm", raise);
+    save_image(buffer, width, height, 3, backgrounds[raise][0]);
   }
 
 
