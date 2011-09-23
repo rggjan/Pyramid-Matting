@@ -65,12 +65,12 @@ int main() {
       if (mask[index] == 0) {
         bg_num++;
         for (int color=0; color<3; color++) {
-          bg[color] += original[index*color+color];
+          bg[color] += original[index*3+color];
         }
       } else if (mask[index] == 255) {
         fg_num++;
         for (int color=0; color<3; color++) {
-          fg[color] += original[index*color+color];
+          fg[color] += original[index*3+color];
         }
       }
     }
