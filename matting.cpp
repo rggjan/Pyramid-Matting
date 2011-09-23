@@ -114,19 +114,35 @@ int main() {
     // Width half
     width = width/2;
     originals[raise][0] = new unsigned char[width*height*3];
-  
+    foregrounds[raise][0] = new unsigned char[width*height*3];
+    foreground_ps[raise][0] = new double[width*height];
+
     for (int y=0; y<height; y++) {
       for (int x=0; x<width; x++) {
+        foreground_ps[raise][0][y*width+x] =
+          (foreground_ps[raise][1][y*width*2+x*2] +
+           foreground_ps[raise][1][y*width*2+x*2+1])/2;
+
         for (int c=0; c<3; c++) {
           originals[raise][0][(y*width+x)*3+c] =
             (originals[raise][1][(y*width*2+2*x)*3+c] +
              originals[raise][1][(y*width*2+2*x+1)*3+c])/2;
+
+          foregrounds[raise][0][(y*width+x)*3+c] =
+            (foregrounds[raise][1][(y*width*2+x*2)*3+c]*
+             foreground_ps[raise][1][y*width*2+x*2] +
+             foregrounds[raise][1][(y*width*2+x*2+1)*3+c]*
+             foreground_ps[raise][1][y*width*2+x*2+1])/
+             foreground_ps[raise][0][y*width+x]/2;
         }
       }
     }
 
     snprintf(buffer, 100, "final_%i.ppm", raise);
     save_image(buffer, width, height, 3, originals[raise][0]);
+    
+    snprintf(buffer, 100, "foregrounds_%i.ppm", raise);
+    save_image(buffer, width, height, 3, foregrounds[raise][0]);
   }
 
 
