@@ -39,6 +39,39 @@ save_image (const char* filename, int dimx, int dimy, int num_colors, unsigned c
   fclose (fp);
 }
 
+
+// Project the Point P onto the line from A-B.
+// alpha_pointer receives the calculated alpha value between 0 and 1
+// where (0=A, 1=B)
+// returns the squared distance of the best projected point to P
+float projection (unsigned char B[3], unsigned char A[3], unsigned char P[3], unsigned char* alpha_pointer) {
+  int ABx = B[0] - A[0];
+  int ABy = B[1] - A[1];
+  int ABz = B[2] - A[2];
+
+  int APx = P[0] - A[0];
+  int APy = P[1] - A[1];
+  int APz = P[2] - A[2];
+
+  int dot_AB = ABx * ABx + ABy * ABy + ABz * ABz;
+  float alpha = (float)(ABx * APx + ABy * APy + ABz * APz) / dot_AB;
+
+  float PPx, PPy, PPz;
+
+  PPx = P[0] - (A[0] + alpha * ABx);
+  PPy = P[1] - (A[1] + alpha * ABy);
+  PPz = P[2] - (A[2] + alpha * ABz);
+
+  alpha = alpha > 1 ? 1 : (alpha < 0 ? 0 : alpha);
+
+  if (alpha_pointer) {
+    *alpha_pointer = (unsigned char)(alpha*255);
+  }
+
+  // Normalize, so that it is in the unit cube of colors
+  return (PPx * PPx + PPy * PPy + PPz * PPz) / (255. * 255.);
+}
+
 int main() {
   int width = 512;
   int height = 512;
@@ -47,9 +80,12 @@ int main() {
   unsigned char* mask = load_image("trimap.pnm", width, height, 1);
 
   unsigned char* originals[raise+1][2];
+  unsigned char* new_alphas[raise+1][2];
   unsigned char* foregrounds[raise+1][2];
+  unsigned char* new_foregrounds[raise+1][2];
   double* foreground_ps[raise+1][2];
   unsigned char* backgrounds[raise+1][2];
+  unsigned char* new_backgrounds[raise+1][2];
   double* background_ps[raise+1][2];
 
   originals[9][0] = load_image("test.ppm", width, height, 3);
@@ -57,7 +93,7 @@ int main() {
   foreground_ps[9][0] = new double[width*height];
   backgrounds[9][0] = new unsigned char[width*height*3];
   background_ps[9][0] = new double[width*height];
-    
+
   for (int y=0; y<height; y++) {
     for (int x=0; x<width; x++) {
       if (mask[width*y+x] == 255) {
@@ -194,6 +230,38 @@ int main() {
     save_image(buffer, width, height, 3, backgrounds[raise][0]);
   }
 
+  // Upscaling
+  raise = 0;
+  width = 1;
+  height = 1;
+
+  new_foregrounds[0][0] = new unsigned char[3];
+  new_backgrounds[0][0] = new unsigned char[3];
+  new_alphas[0][0] = new unsigned char[1];
+
+  for (int c=0; c<3; c++) {
+    new_foregrounds[0][0][c] = foregrounds[0][0][c];
+    new_backgrounds[0][0][c] = backgrounds[0][0][c];
+  }
+
+  // Calculate alpha
+  unsigned char merged_point[3];
+  for (int c=0; c<3; c++) {
+    merged_point[c] = (originals[0][0][c]
+      -foreground_ps[0][0][0]*foregrounds[0][0][c]
+      -background_ps[0][0][0]*backgrounds[0][0][c])
+      /(1-foreground_ps[0][0][0]-background_ps[0][0][0]);
+  }
+  projection(new_foregrounds[0][0], new_backgrounds[0][0], merged_point, &(new_alphas[0][0][0]));
+
+/*  while (raise <= 9) {
+    for (int y=0; y<height; y++) {
+      for (int x=0; x<width; x++) {
+      }
+    }*/
+
+
+  printf("Alpha: %i\n", new_alphas[0][0][0]);
 
 
 /*  unsigned char* final = new unsigned char[width*height*3];*/
