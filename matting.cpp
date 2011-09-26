@@ -46,11 +46,11 @@ int main() {
 
   unsigned char* mask = load_image("trimap.pnm", width, height, 1);
 
-  unsigned char* originals[raise][2];
-  unsigned char* foregrounds[raise][2];
-  double* foreground_ps[raise][2];
-  unsigned char* backgrounds[raise][2];
-  double* background_ps[raise][2];
+  unsigned char* originals[raise+1][2];
+  unsigned char* foregrounds[raise+1][2];
+  double* foreground_ps[raise+1][2];
+  unsigned char* backgrounds[raise+1][2];
+  double* background_ps[raise+1][2];
 
   originals[9][0] = load_image("test.ppm", width, height, 3);
   foregrounds[9][0] = new unsigned char[width*height*3];
