@@ -1,6 +1,8 @@
 #include <stdio.h>
+#include <iostream>
 #include <stdlib.h>
 
+using namespace std;
 
 unsigned char*
 load_image (const char* filename, int dimx, int dimy, int num_colors) {
@@ -39,6 +41,39 @@ save_image (const char* filename, int dimx, int dimy, int num_colors, unsigned c
   fclose (fp);
 }
 
+// a1 and f1 known
+void solve_equations(unsigned char* f0, unsigned char* f1, unsigned char* f2,
+    unsigned char* b0, unsigned char* b1, unsigned char* b2,
+    unsigned char* a0, unsigned char* a1, unsigned char* a2,
+    unsigned char* c1, unsigned char* c2) {
+  a2[0] = 2*a0[0]-a1[0];
+  for (int c=0; c<3; c++) {
+    b1[c] = (c1[c] - f1[c]*a1[0])/(1-a1[0]);
+    f2[c] = (2*f0[c]*a0[0] - f1[c]*a1[0])/(2*a0[0]-a1[0]);
+    b2[c] = (c2[c] - (2*f0[c]*a0[0]-f1[c]*a1[0]))/(1-2*a0[0]+a1[0]);
+  }
+}
+
+// a1 and f1 unknown
+void optimize(unsigned char* f0, unsigned char* f1, unsigned char* f2,
+    unsigned char* b0, unsigned char* b1, unsigned char* b2,
+    unsigned char* a0, unsigned char* a1, unsigned char* a2,
+    unsigned char* c1, unsigned char* c2) {
+  a1[0] = 128;
+  f1[0] = f0[0];
+  f1[1] = f0[1];
+  f1[2] = f0[2];
+
+  solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
+  cout << "f0\tf1\tf2\tb0\tb1\tb2\tc1\tc2\n";
+  for (int c=0; c<3; c++) {
+    cout << (int)f0[c] << "\t" << (int)f1[c] << "\t" << (int)f2[c] << "\t" <<
+      (int)b0[c] << "\t" << (int)b1[c] << "\t" << (int)b2[c] << "\t" <<
+      (int)c1[c] << "\t" << (int)c2[c] << "\t" << "\n";
+  }
+
+  cout << "alpha 0/1/2: " << (int)a0[0] << "/" << (int)a1[0] << "/" << (int)a2[0] << "\n";
+}
 
 // Project the Point P onto the line from A-B.
 // alpha_pointer receives the calculated alpha value between 0 and 1
@@ -123,7 +158,7 @@ int main() {
     }
   }
 
-  save_image("results/final_9.ppm", width, height, 3, originals[9][0]);
+  save_image("results/originals_9.ppm", width, height, 3, originals[9][0]);
   save_image("results/foregrounds_9.ppm", width, height, 3, foregrounds[9][0]);
   save_image("results/backgrounds_9.ppm", width, height, 3, backgrounds[9][0]);
 
@@ -170,7 +205,7 @@ int main() {
     }
 
     static char buffer[100];
-    snprintf(buffer, 100, "results/final_%i_h.ppm", raise);
+    snprintf(buffer, 100, "results/originals_%i_h.ppm", raise);
     save_image(buffer, width, height, 3, originals[raise][1]);
     
     snprintf(buffer, 100, "results/foregrounds_%i_h.ppm", raise);
@@ -220,7 +255,7 @@ int main() {
       }
     }
 
-    snprintf(buffer, 100, "results/final_%i.ppm", raise);
+    snprintf(buffer, 100, "results/originals_%i.ppm", raise);
     save_image(buffer, width, height, 3, originals[raise][0]);
     
     snprintf(buffer, 100, "results/foregrounds_%i.ppm", raise);
@@ -254,14 +289,44 @@ int main() {
   }
   projection(new_foregrounds[0][0], new_backgrounds[0][0], merged_point, &(new_alphas[0][0][0]));
 
-/*  while (raise <= 9) {
-    for (int y=0; y<height; y++) {
-      for (int x=0; x<width; x++) {
-      }
-    }*/
-
-
   printf("Alpha: %i\n", new_alphas[0][0][0]);
+  save_image("results/new_foregrounds_0.ppm", 1, 1, 3, new_foregrounds[0][0]);
+
+  while (raise <= 9) {
+    width *= 2;
+    new_foregrounds[0][1] = new unsigned char[width*height*3];
+    new_backgrounds[0][1] = new unsigned char[width*height*3];
+    new_alphas[0][1] = new unsigned char[width*height];
+
+    for (int y=0; y<height; y++) {
+      for (int x=0; x<width; x+=2) {
+        unsigned char* f0 = &(new_foregrounds[0][0][(y*width+x)*3]);
+        unsigned char* b0 = &(new_backgrounds[0][0][(y*width+x)*3]);
+        unsigned char* a0 = &(new_alphas[0][0][(y*width+x)*3]);
+        unsigned char* c1 = &(originals[0][1][(y*width+x)*3]);
+        unsigned char* c2 = &(originals[0][1][(y*width+x+1)*3]);
+
+        unsigned char* f1 = &(new_foregrounds[0][1][(y*width+x)*3]);
+        unsigned char* f2 = &(new_foregrounds[0][1][(y*width+x+1)*3]);
+        
+        unsigned char* b1 = &(new_backgrounds[0][1][(y*width+x)*3]);
+        unsigned char* b2 = &(new_backgrounds[0][1][(y*width+x+1)*3]);
+        
+        unsigned char* a1 = &(new_alphas[0][1][y*width+x]);
+        unsigned char* a2 = &(new_alphas[0][1][y*width+x+1]);
+        
+        optimize(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
+      }
+    }
+
+    static char buffer[100];
+    snprintf(buffer, 100, "results/new_foregrounds_%i_h.ppm", raise);
+    save_image(buffer, width, height, 3, new_foregrounds[0][1]);
+    
+    exit(1);
+    raise++;
+  }
+
 
 
 /*  unsigned char* final = new unsigned char[width*height*3];*/
