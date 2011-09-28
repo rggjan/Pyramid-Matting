@@ -130,7 +130,7 @@ void optimize(unsigned char* f0, unsigned char* f1, unsigned char* f2,
   a1[0] = 128;
 //  int alpha = 128;
 
-  for (int i=0; i<1000000; i++) {
+  for (int i=0; i<10000; i++) {
     // alpha
     int qplus, qminus;
     if (a1[0] != 255)
@@ -494,7 +494,15 @@ int main() {
     for (int y=0; y<height; y++) {
       for (int x=0; x<width; x++) {
         for (int c=0; c<3; c++) {
-          tmp[(y*width+x)*3+c] = new_foregrounds[raise][1][(y*width+x)*3+c]*new_alphas[raise][1][y*width+x];
+          tmp[(y*width+x)*3+c] =
+            foregrounds[raise][1][(y*width+x)*3+c]*
+            foreground_ps[raise][1][(y*width+x)]+
+
+            (new_foregrounds[raise][1][(y*width+x)*3+c]
+            *new_alphas[raise][1][y*width+x]/255.)*
+
+            (1-foreground_ps[raise][1][(y*width+x)]-
+            background_ps[raise][1][(y*width+x)]);
         }
       }
     }
@@ -574,7 +582,15 @@ int main() {
     for (int y=0; y<height; y++) {
       for (int x=0; x<width; x++) {
         for (int c=0; c<3; c++) {
-          tmp[(y*width+x)*3+c] = new_foregrounds[raise+1][0][(y*width+x)*3+c]*new_alphas[raise+1][0][y*width+x];
+          tmp[(y*width+x)*3+c] =
+            foregrounds[raise+1][0][(y*width+x)*3+c]*
+            foreground_ps[raise+1][0][(y*width+x)]+
+
+            (new_foregrounds[raise+1][0][(y*width+x)*3+c]
+            *new_alphas[raise+1][0][y*width+x]/255.)*
+
+            (1-foreground_ps[raise+1][0][(y*width+x)]-
+            background_ps[raise+1][0][(y*width+x)]);
         }
       }
     }
