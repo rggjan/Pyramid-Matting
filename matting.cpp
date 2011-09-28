@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <iostream>
 #include <stdlib.h>
+#include <sys/stat.h>
+#include <errno.h>
+#include <string.h>
 
 using namespace std;
 
@@ -233,7 +236,26 @@ float projection (unsigned char B[3], unsigned char A[3], unsigned char P[3], un
   return (PPx * PPx + PPy * PPy + PPz * PPz) / (255. * 255.);
 }
 
+#define RESULTS "results/"
+
 int main() {
+  // ensure the "result" directory exists
+  struct stat result_dir;
+  if (stat(RESULTS, &result_dir) < 0) {
+    int err = errno;
+    if (err == ENOENT) {
+      // create directory
+      mkdir(RESULTS, 0777);
+    } else {
+      cerr << "Error while testing existence of 'results' directory: " << strerror(err) << '\n';
+      return 1;
+    }
+  }
+  if (!S_ISDIR(result_dir.st_mode)) {
+    cerr << "The file 'results' is not a directory.\n";
+    return 1;
+  }
+
   int width = 512;
   int height = 512;
   int raise = 9;
