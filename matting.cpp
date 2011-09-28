@@ -55,25 +55,24 @@ double solve_equations(unsigned char* f0, unsigned char* f1, unsigned char* f2,
   int nb2[3];
   a2[0] = 2*a0[0]-a1[0];
   for (int c=0; c<3; c++) {
-    // arbitrary value if for/background value is not used
-    // XXX: is this correct?
+    // set the same fore/background as in the combined pixel if it is not used
     float div = 1-a1[0]/255.;
     if (div != 0.0) {
       nb1[c] = (c1[c] - f1[c]*a1[0]/255.)/div;
     } else {
-      nb1[c] = 0;
+      nb1[c] = b0[c];
     }
     div = 2*a0[0]/255.-a1[0]/255.;
     if (div != 0.0) {
       nf2[c] = (2*f0[c]*a0[0]/255. - f1[c]*a1[0]/255.)/div;
     } else {
-      nf2[c] = 0;
+      nf2[c] = f0[c];
     }
     div = 1-2*a0[0]+a1[0];
     if (div != 0.0) {
       nb2[c] = (c2[c] - (2*f0[c]*a0[0]-f1[c]*a1[0]))/div;
     } else {
-      nb2[c] = 0;
+      nb2[c] = b0[c];
     }
   }
   
@@ -266,8 +265,7 @@ int main() {
       cerr << "Error while testing existence of 'results' directory: " << strerror(err) << '\n';
       return 1;
     }
-  }
-  if (!S_ISDIR(result_dir.st_mode)) {
+  } else if (!S_ISDIR(result_dir.st_mode)) {
     cerr << "The file 'results' is not a directory.\n";
     return 1;
   }
@@ -642,4 +640,29 @@ int main() {
 
     raise++;
   }
+
+  // cleanup (not strictly needed, but makes valgrind output cleaner)
+  delete[] mask;
+
+  for (int i = 0; i < raise; i++) {
+    for (int j = 0; j < 2; j++) {
+      delete[] originals[i][j];
+      delete[] foregrounds[i][j];
+      delete[] foreground_ps[i][j];
+      delete[] backgrounds[i][j];
+      delete[] background_ps[i][j];
+      delete[] new_foregrounds[i][j];
+      delete[] new_backgrounds[i][j];
+      delete[] new_alphas[i][j];
+    }
+  }
+
+  delete[] originals[9][0];
+  delete[] foregrounds[9][0];
+  delete[] foreground_ps[9][0];
+  delete[] backgrounds[9][0];
+  delete[] background_ps[9][0];
+  delete[] new_foregrounds[9][0];
+  delete[] new_backgrounds[9][0];
+  delete[] new_alphas[9][0];
 }
