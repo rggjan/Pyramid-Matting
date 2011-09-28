@@ -233,7 +233,8 @@ float projection (unsigned char B[3], unsigned char A[3], unsigned char P[3], un
   int APz = P[2] - A[2];
 
   float len_AB = sqrtf(ABx * ABx + ABy * ABy + ABz * ABz);
-  float alpha = (ABx * APx + ABy * APy + ABz * APz) / len_AB;
+  float len_AP = sqrtf(APx * APx + APy * APy + APz * APz);
+  float alpha = (ABx * APx + ABy * APy + ABz * APz) / (len_AB * len_AP);
 
   float PPx, PPy, PPz;
 
