@@ -66,7 +66,7 @@ void optimize(unsigned char* f0, unsigned char* f1, unsigned char* f2,
 
   solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
 
-  cout << "alpha 0/1/2: " << (int)a0[0] << "/" << (int)a1[0] << "/" << (int)a2[0] << "\n";
+  //cout << "alpha 0/1/2: " << (int)a0[0] << "/" << (int)a1[0] << "/" << (int)a2[0] << "\n";
 }
 
 // Project the Point P onto the line from A-B.
@@ -288,9 +288,9 @@ int main() {
 
   while (raise <= 9) {
     width *= 2;
-    new_foregrounds[0][1] = new unsigned char[width*height*3];
-    new_backgrounds[0][1] = new unsigned char[width*height*3];
-    new_alphas[0][1] = new unsigned char[width*height];
+    new_foregrounds[raise][1] = new unsigned char[width*height*3];
+    new_backgrounds[raise][1] = new unsigned char[width*height*3];
+    new_alphas[raise][1] = new unsigned char[width*height];
 
     for (int y=0; y<height; y++) {
       for (int x=0; x<width; x+=2) {
@@ -337,12 +337,12 @@ int main() {
         
         optimize(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
 
-        cout << "f0\tf1\tf2\tb0\tb1\tb2\tc1\tc2\n";
+        /*cout << "f0\tf1\tf2\tb0\tb1\tb2\tc1\tc2\n";
         for (int c=0; c<3; c++) {
           cout << (int)f0[c] << "\t" << (int)f1[c] << "\t" << (int)f2[c] << "\t" <<
             (int)b0[c] << "\t" << (int)b1[c] << "\t" << (int)b2[c] << "\t" <<
             (int)c1[c] << "\t" << (int)c2[c] << "\t" << "\n";
-        }
+        }*/
       }
     }
 
@@ -357,12 +357,91 @@ int main() {
       }
     }
     save_image(buffer, width, height, 3, tmp);
+    delete tmp;
 
     snprintf(buffer, 100, "results/new_foregrounds_%i_h.ppm", raise);
     save_image(buffer, width, height, 3, new_foregrounds[raise][1]);
     
     snprintf(buffer, 100, "results/new_alphas_%i_h.ppm", raise);
-    save_image(buffer, width, height, 3, new_alphas[raise][1]);
+    save_image(buffer, width, height, 1, new_alphas[raise][1]);
+
+    // Stretch height
+    height *= 2;
+    new_foregrounds[raise+1][0] = new unsigned char[width*height*3];
+    new_backgrounds[raise+1][0] = new unsigned char[width*height*3];
+    new_alphas[raise+1][0] = new unsigned char[width*height];
+
+    for (int y=0; y<height; y+=2) {
+      for (int x=0; x<width; x++) {
+        unsigned char* f0 = &(new_foregrounds[raise][1][((y/2)*width+x)*3]);
+        unsigned char* b0 = &(new_backgrounds[raise][1][((y/2)*width+x)*3]);
+        unsigned char* a0 = &(new_alphas[raise][1][((y/2)*width+x)*3]);
+
+        unsigned char* f1 = &(new_foregrounds[raise+1][0][(y*width+x)*3]);
+        unsigned char* f2 = &(new_foregrounds[raise+1][0][((y+1)*width+x)*3]);
+        
+        unsigned char* b1 = &(new_backgrounds[raise+1][0][(y*width+x)*3]);
+        unsigned char* b2 = &(new_backgrounds[raise+1][0][((y+1)*width+x)*3]);
+        
+        unsigned char* a1 = &(new_alphas[raise+1][0][y*width+x]);
+        unsigned char* a2 = &(new_alphas[raise+1][0][(y+1)*width+x]);
+
+        // Subtract known foreground / background 
+        unsigned char* original1 = &(originals[raise+1][0][(y*width+x)*3]);
+        unsigned char* original2 = &(originals[raise+1][0][((y+1)*width+x)*3]);
+       
+        unsigned char* foreground1 = &(foregrounds[raise+1][0][(y*width+x)*3]);
+        unsigned char* foreground2 = &(foregrounds[raise+1][0][((y+1)*width+x)*3]);
+        
+        unsigned char* background1 = &(backgrounds[raise+1][0][(y*width+x)*3]);
+        unsigned char* background2 = &(backgrounds[raise+1][0][((y+1)*width+x)*3]);
+
+        double* foreground_ps1 = &(foreground_ps[raise+1][0][((y+1)*width+x)]);
+        double* foreground_ps2 = &(foreground_ps[raise+1][0][((y+1)*width+x)]);
+        
+        double* background_ps1 = &(background_ps[raise+1][0][((y+1)*width+x)]);
+        double* background_ps2 = &(background_ps[raise+1][0][((y+1)*width+x)]);
+
+        unsigned char c1[3];
+        unsigned char c2[3];
+
+        for (int c=0; c<3; c++) {
+          c1[c] = (original1[c] - foreground_ps1[0]*foreground1[c]
+              -background_ps1[0]*background1[c])
+              /(1-foreground_ps1[0]-background_ps1[0]);
+          c2[c] = (original2[c] - foreground_ps2[0]*foreground2[c]
+              -background_ps2[0]*background2[c])
+              /(1-foreground_ps2[0]-background_ps2[0]);
+        }
+        
+        optimize(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
+
+/*        cout << "f0\tf1\tf2\tb0\tb1\tb2\tc1\tc2\n";
+        for (int c=0; c<3; c++) {
+          cout << (int)f0[c] << "\t" << (int)f1[c] << "\t" << (int)f2[c] << "\t" <<
+            (int)b0[c] << "\t" << (int)b1[c] << "\t" << (int)b2[c] << "\t" <<
+            (int)c1[c] << "\t" << (int)c2[c] << "\t" << "\n";
+        }*/
+      }
+    }
+
+    snprintf(buffer, 100, "results/final_%i.ppm", raise+1);
+    tmp = new unsigned char[width*height*3];
+    for (int y=0; y<height; y++) {
+      for (int x=0; x<width; x++) {
+        for (int c=0; c<3; c++) {
+          tmp[(y*width+x)*3+c] = new_foregrounds[raise+1][0][(y*width+x)*3+c]*new_alphas[raise+1][0][y*width+x];
+        }
+      }
+    }
+    save_image(buffer, width, height, 3, tmp);
+    delete tmp;
+
+    snprintf(buffer, 100, "results/new_foregrounds_%i.ppm", raise+1);
+    save_image(buffer, width, height, 3, new_foregrounds[raise+1][0]);
+    
+    snprintf(buffer, 100, "results/new_alphas_%i.ppm", raise+1);
+    save_image(buffer, width, height, 1, new_alphas[raise+1][0]);
 
     raise++;
   }
