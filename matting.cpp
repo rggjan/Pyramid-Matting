@@ -78,6 +78,11 @@ double solve_equations(unsigned char* f0, unsigned char* f1, unsigned char* f2,
       nb2[c] = b0[c];
     }
   }
+
+  /*cout << (int)a1[0] << "/" << (int)a2[0] << endl;
+  for (int c=0; c<3; c++) {
+    cout << (int)nb1[c] << "\t" << (int)nb2[c] << "\t" << (int)f1[c] << "\t" << (int)nf2[c] << endl;
+  }*/
   
   double quality = 0;
   for (int c=0; c<3; c++) {
@@ -114,6 +119,7 @@ double solve_equations(unsigned char* f0, unsigned char* f1, unsigned char* f2,
     b2[c] = nb2[c];
   }
 
+  //quality = 0;
   if (quality == 0) {
     for (int c=0; c<3; c++) {
       int diff = f1[c]-f0[c];
@@ -149,89 +155,135 @@ void optimize(unsigned char* f0, unsigned char* f1, unsigned char* f2,
   f1[2] = f0[2];
   a1[0] = 128;
 
-  for (int i=0; i<100; i++) {
-    // alpha
-    int qplus, qminus;
-    if (a1[0] != 255)
-      a1[0]++;
-    qplus = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
-    if (a1[0] != 255)
-      a1[0]--;
+  unsigned char best_f1[3];
+  unsigned char best_a;
 
-    if (a1[0] != 0)
-      a1[0]--;
-    qminus = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
-    if (a1[0] != 0)
-      a1[0]++;
-
-    cout << (int)f1[0] << "/" << (int)f1[1] << "/" << (int)f1[2] << "/" << (int)a1[0]+1 << ": " << qplus << endl;
-
-    if (qplus > 0)
-      if (qminus > 0)
-        if (qplus < qminus)
-          a1[0]++;
-        else
-          a1[0]--;
-      else
-        a1[0]++;
-    else
-      if (qminus > 0)
-        a1[0]--;
-      else
-        if (qminus > qplus)
-          a1[0]--;
-        else
-          a1[0]++;
-
-    for (int c=0; c<3; c++) {
-      int qplus, qminus;
-      if (f1[c] != 255) {
-        f1[c]++;
-        qplus = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
-        f1[c]--;
-      } else {
-        qplus = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
-      }
-
-      if (f1[c] != 0) {
-        f1[c]--;
-        qminus = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
-        f1[c]++;
-      } else {
-        qminus = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
-      }
-
-      if (qplus > 0) {
-        if (qminus > 0) {
-          if (qplus < qminus) {
-            if (f1[c] != 255)
-              f1[c]++;
+  int best_result = -100000000;
+  for (a1[0] = 0; a1[0] < 250; a1[0]+=4) {
+    cout << (int)a1[0] << "/255" << endl;
+    for (f1[0] = 0; f1[0] < 250; f1[0]+=4) {
+      for (f1[1] = 0; f1[1] < 250; f1[1]+=4) {
+        for (f1[2] = 0; f1[2] < 250; f1[2]+=4) {
+          int result = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
+          if (best_result < 0) {
+            if (result > best_result) {
+              best_result = result;
+              best_a = a1[0];
+              for (int c=0; c<3; c++) {
+                best_f1[c] = f1[c];
+              }
+              cout << (int)f1[0] << "/" << (int)f1[1] << "/" << (int)f1[2] << "/" << (int)a1[0] << ":" << best_result << endl;
+            }
           } else {
-            if (f1[c] != 0)
-              f1[c]--;
-          }
-        } else {
-          if (f1[c] != 255)
-            f1[c]++;
-        }
-      } else {
-        if (qminus > 0) {
-          if (f1[c] != 0)
-            f1[c]--;
-        } else {
-          if (qminus > qplus) {
-            if (f1[c] != 0)
-              f1[c]--;
-          } else {
-            if (f1[c] != 255)
-              f1[c]++;
+            if (result > 0 && result < best_result) {
+              best_result = result;
+              best_a = a1[0];
+              for (int c=0; c<3; c++) {
+                best_f1[c] = f1[c];
+              }
+              cout << (int)f1[0] << "/" << (int)f1[1] << "/" << (int)f1[2] << "/" << (int)a1[0] << ":" << best_result << endl;
+            }
           }
         }
       }
     }
   }
+
+
+      /*
+    f1[0] = rand()%256;
+    f1[1] = rand()%256;
+    f1[2] = rand()%256;
+    a1[0] = rand()%256;
+
+    for (int i=0; i<100; i++) {
+      // alpha
+      int qplus, qminus;
+      if (a1[0] != 255)
+        a1[0]++;
+      qplus = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
+      if (a1[0] != 255)
+        a1[0]--;
+
+      if (a1[0] != 0)
+        a1[0]--;
+      qminus = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
+      if (a1[0] != 0)
+        a1[0]++;
+
+      cout << (int)f1[0] << "/" << (int)f1[1] << "/" << (int)f1[2] << "/" << (int)a1[0]+1 << ": " << qplus << endl;
+
+      if (qplus > 0)
+        if (qminus > 0)
+          if (qplus < qminus)
+            a1[0]++;
+          else
+            a1[0]--;
+        else
+          a1[0]++;
+      else
+        if (qminus > 0)
+          a1[0]--;
+        else
+          if (qminus > qplus)
+            a1[0]--;
+          else
+            a1[0]++;
+
+      for (int c=0; c<3; c++) {
+        int qplus, qminus;
+        if (f1[c] != 255) {
+          f1[c]++;
+          qplus = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
+          f1[c]--;
+        } else {
+          qplus = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
+        }
+
+        if (f1[c] != 0) {
+          f1[c]--;
+          qminus = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
+          f1[c]++;
+        } else {
+          qminus = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
+        }
+
+        if (qplus > 0) {
+          if (qminus > 0) {
+            if (qplus < qminus) {
+              if (f1[c] != 255)
+                f1[c]++;
+            } else {
+              if (f1[c] != 0)
+                f1[c]--;
+            }
+          } else {
+            if (f1[c] != 255)
+              f1[c]++;
+          }
+        } else {
+          if (qminus > 0) {
+            if (f1[c] != 0)
+              f1[c]--;
+          } else {
+            if (qminus > qplus) {
+              if (f1[c] != 0)
+                f1[c]--;
+            } else {
+              if (f1[c] != 255)
+                f1[c]++;
+            }
+          }
+        }
+      }
+    }
+  }*/
   
-  exit(1);
+  //exit(1);
+              a1[0] = best_a;
+              for (int c=0; c<3; c++) {
+                f1[c] = best_f1[c];
+              }
 
   //cout << "alpha 0/1/2: " << (int)a0[0] << "/" << (int)a1[0] << "/" << (int)a2[0] << "\n";
 }
@@ -466,11 +518,16 @@ int main() {
       -background_ps[0][0][0]*backgrounds[0][0][c])
       /(1-foreground_ps[0][0][0]-background_ps[0][0][0]);
   }
+
+  // TODO(rggjan): we need a better foreground/background approximation here!
   projection(new_foregrounds[0][0], new_backgrounds[0][0], merged_point, &(new_alphas[0][0][0]));
+  /*for (int c=0; c<3; c++) {
+    cout << (int)new_foregrounds[0][0][c] <<"\t"<<(int)new_backgrounds[0][0][c]
+      <<"\t"<<(int)merged_point[c]<<endl;
+  }
+  exit(0);*/
 
   save_image(RESULTS "new_foregrounds_0.ppm", 1, 1, 3, new_foregrounds[0][0]);
-
-  
 
   while (raise < 9) {
     cout << "first " << raise << endl;
@@ -514,13 +571,29 @@ int main() {
         unsigned char c1[3];
         unsigned char c2[3];
 
-        for (int c=0; c<3; c++) {
-          c1[c] = (original1[c] - foreground_ps1[0]*foreground1[c]
-              -background_ps1[0]*background1[c])
-              /(1-foreground_ps1[0]-background_ps1[0]);
-          c2[c] = (original2[c] - foreground_ps2[0]*foreground2[c]
-              -background_ps2[0]*background2[c])
-              /(1-foreground_ps2[0]-background_ps2[0]);
+        if (foreground_ps1[0] == 1 || foreground_ps2[0] == 1) {
+          if (foreground_ps1[0] == 1) {
+            f2[0] = f0[0];
+            f2[1] = f0[1];
+            f2[2] = f0[2];
+            a2[0] = a0[0];
+          } else {
+            f1[0] = f0[0];
+            f1[1] = f0[1];
+            f1[2] = f0[2];
+            a1[0] = a0[0];
+          }
+
+        } else {
+          for (int c=0; c<3; c++) {
+            c1[c] = (original1[c] - foreground_ps1[0]*foreground1[c]
+                -background_ps1[0]*background1[c])
+                /(1-foreground_ps1[0]-background_ps1[0]);
+            c2[c] = (original2[c] - foreground_ps2[0]*foreground2[c]
+                -background_ps2[0]*background2[c])
+                /(1-foreground_ps2[0]-background_ps2[0]);
+          }
+          optimize(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
         }
         
 //        cout << foreground_ps1[0] << endl << endl;
@@ -529,7 +602,6 @@ int main() {
           cout << (int)c1[c] <<  "," << (int)c2[c] << endl;
         }*/
 
-        optimize(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
 
         /*cout << "f0\tf1\tf2\tb0\tb1\tb2\tc1\tc2\n";
         for (int c=0; c<3; c++) {
@@ -609,16 +681,31 @@ int main() {
         unsigned char c1[3];
         unsigned char c2[3];
 
-        for (int c=0; c<3; c++) {
-          c1[c] = (original1[c] - foreground_ps1[0]*foreground1[c]
-              -background_ps1[0]*background1[c])
-              /(1-foreground_ps1[0]-background_ps1[0]);
-          c2[c] = (original2[c] - foreground_ps2[0]*foreground2[c]
-              -background_ps2[0]*background2[c])
-              /(1-foreground_ps2[0]-background_ps2[0]);
+
+        if (foreground_ps1[0] == 1 || foreground_ps2[0] == 1) {
+          if (foreground_ps1[0] == 1) {
+            f2[0] = f0[0];
+            f2[1] = f0[1];
+            f2[2] = f0[2];
+            a2[0] = a0[0];
+          } else {
+            f1[0] = f0[0];
+            f1[1] = f0[1];
+            f1[2] = f0[2];
+            a1[0] = a0[0];
+          }
+
+        } else {
+          for (int c=0; c<3; c++) {
+            c1[c] = (original1[c] - foreground_ps1[0]*foreground1[c]
+                -background_ps1[0]*background1[c])
+                /(1-foreground_ps1[0]-background_ps1[0]);
+            c2[c] = (original2[c] - foreground_ps2[0]*foreground2[c]
+                -background_ps2[0]*background2[c])
+                /(1-foreground_ps2[0]-background_ps2[0]);
+          }
+          optimize(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
         }
-        
-        optimize(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
 
 /*        cout << "f0\tf1\tf2\tb0\tb1\tb2\tc1\tc2\n";
         for (int c=0; c<3; c++) {
