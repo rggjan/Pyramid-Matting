@@ -127,37 +127,77 @@ void optimize(unsigned char* f0, unsigned char* f1, unsigned char* f2,
   f1[0] = f0[0];
   f1[1] = f0[1];
   f1[2] = f0[2];
-  int alpha = 128;
+  a1[0] = 128;
+//  int alpha = 128;
 
-  for (int i=0; i<100; i++) {
+  for (int i=0; i<1000000; i++) {
+    // alpha
     int qplus, qminus;
-    a1[0] = alpha+1;
+    if (a1[0] != 255)
+      a1[0]++;
     qplus = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
+    if (a1[0] != 255)
+      a1[0]--;
 
-    a1[0] = alpha-1;
+    if (a1[0] != 0)
+      a1[0]--;
     qminus = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
+    if (a1[0] != 0)
+      a1[0]++;
 
-    cout << alpha+1 << "/" << alpha-1 << ": " << qplus << "/" << qminus << endl;
+    //cout << (int)f1[0] << "/" << (int)f1[1] << "/" << (int)f1[2] << "/" << (int)a1[0]+1 << ": " << qplus << endl;
+
     if (qplus > 0)
       if (qminus > 0)
         if (qplus < qminus)
-          alpha++;
+          a1[0]++;
         else
-          alpha--;
+          a1[0]--;
       else
-        alpha++;
+        a1[0]++;
     else
       if (qminus > 0)
-        alpha--;
+        a1[0]--;
       else
         if (qminus > qplus)
-          alpha--;
+          a1[0]--;
         else
-          alpha++;
+          a1[0]++;
 
+    for (int c=0; c<3; c++) {
+      int qplus, qminus;
+      if (f1[c] != 255)
+        f1[c]++;
+      qplus = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
+      if (f1[c] != 255)
+        f1[c]--;
+
+      if (f1[c] != 0)
+        f1[c]--;
+      qminus = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
+      if (f1[c] != 0)
+        f1[c]++;
+
+      if (qplus > 0)
+        if (qminus > 0)
+          if (qplus < qminus)
+            f1[c]++;
+          else
+            f1[c]--;
+        else
+          f1[c]++;
+      else
+        if (qminus > 0)
+          f1[c]--;
+        else
+          if (qminus > qplus)
+            f1[c]--;
+          else
+            f1[c]++;
+      }
   }
   
-  exit(1);
+  //exit(1);
 
   //cout << "alpha 0/1/2: " << (int)a0[0] << "/" << (int)a1[0] << "/" << (int)a2[0] << "\n";
 }
@@ -445,7 +485,6 @@ int main() {
             (int)c1[c] << "\t" << (int)c2[c] << "\t" << "\n";
         }
         cout << (int)a1[0] << "," << (int)a2[0] << endl;
-        exit(1);
       }
     }
 
@@ -467,6 +506,8 @@ int main() {
     
     snprintf(buffer, 100, "results/new_alphas_%i_h.ppm", raise);
     save_image(buffer, width, height, 1, new_alphas[raise][1]);
+    
+   // exit(1);
 
     // Stretch height
     height *= 2;
