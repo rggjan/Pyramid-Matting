@@ -55,9 +55,26 @@ double solve_equations(unsigned char* f0, unsigned char* f1, unsigned char* f2,
   int nb2[3];
   a2[0] = 2*a0[0]-a1[0];
   for (int c=0; c<3; c++) {
-    nb1[c] = (c1[c] - f1[c]*a1[0]/255.)/(1-a1[0]/255.);
-    nf2[c] = (2*f0[c]*a0[0]/255. - f1[c]*a1[0]/255.)/(2*a0[0]/255.-a1[0]/255.);
-    nb2[c] = (c2[c] - (2*f0[c]*a0[0]-f1[c]*a1[0]))/(1-2*a0[0]+a1[0]);
+    // arbitrary value if for/background value is not used
+    // XXX: is this correct?
+    float div = 1-a1[0]/255.;
+    if (div != 0.0) {
+      nb1[c] = (c1[c] - f1[c]*a1[0]/255.)/div;
+    } else {
+      nb1[c] = 0;
+    }
+    div = 2*a0[0]/255.-a1[0]/255.;
+    if (div != 0.0) {
+      nf2[c] = (2*f0[c]*a0[0]/255. - f1[c]*a1[0]/255.)/div;
+    } else {
+      nf2[c] = 0;
+    }
+    div = 1-2*a0[0]+a1[0];
+    if (div != 0.0) {
+      nb2[c] = (c2[c] - (2*f0[c]*a0[0]-f1[c]*a1[0]))/div;
+    } else {
+      nb2[c] = 0;
+    }
   }
   
   double quality = 0;
@@ -440,7 +457,7 @@ int main() {
 
   
 
-  while (raise <= 9) {
+  while (raise < 9) {
     cout << "first " << raise << endl;
     width *= 2;
     new_foregrounds[raise][1] = new unsigned char[width*height*3];

@@ -1,6 +1,9 @@
 run: matting
 	./matting
 
+gdb: matting_debug
+	gdb ./matting_debug
+
 valgrind: matting_debug
 	valgrind ./matting_debug
 
