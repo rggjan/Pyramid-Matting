@@ -130,7 +130,7 @@ void optimize(unsigned char* f0, unsigned char* f1, unsigned char* f2,
   a1[0] = 128;
 //  int alpha = 128;
 
-  for (int i=0; i<10000; i++) {
+  for (int i=0; i<100; i++) {
     // alpha
     int qplus, qminus;
     if (a1[0] != 255)
@@ -430,7 +430,7 @@ int main() {
       for (int x=0; x<width; x+=2) {
         unsigned char* f0 = &(new_foregrounds[raise][0][(y*width+x/2)*3]);
         unsigned char* b0 = &(new_backgrounds[raise][0][(y*width+x/2)*3]);
-        unsigned char* a0 = &(new_alphas[raise][0][(y*width+x/2)*3]);
+        unsigned char* a0 = &(new_alphas[raise][0][(y*width+x/2)]);
 
         unsigned char* f1 = &(new_foregrounds[raise][1][(y*width+x)*3]);
         unsigned char* f2 = &(new_foregrounds[raise][1][(y*width+x+1)*3]);
@@ -507,7 +507,7 @@ int main() {
       }
     }
     save_image(buffer, width, height, 3, tmp);
-    delete tmp;
+    delete[] tmp;
 
     snprintf(buffer, 100, "results/new_foregrounds_%i_h.ppm", raise);
     save_image(buffer, width, height, 3, new_foregrounds[raise][1]);
@@ -527,7 +527,7 @@ int main() {
       for (int x=0; x<width; x++) {
         unsigned char* f0 = &(new_foregrounds[raise][1][((y/2)*width+x)*3]);
         unsigned char* b0 = &(new_backgrounds[raise][1][((y/2)*width+x)*3]);
-        unsigned char* a0 = &(new_alphas[raise][1][((y/2)*width+x)*3]);
+        unsigned char* a0 = &(new_alphas[raise][1][((y/2)*width+x)]);
 
         unsigned char* f1 = &(new_foregrounds[raise+1][0][(y*width+x)*3]);
         unsigned char* f2 = &(new_foregrounds[raise+1][0][((y+1)*width+x)*3]);
@@ -595,7 +595,7 @@ int main() {
       }
     }
     save_image(buffer, width, height, 3, tmp);
-    delete tmp;
+    delete[] tmp;
 
     snprintf(buffer, 100, "results/new_foregrounds_%i.ppm", raise+1);
     save_image(buffer, width, height, 3, new_foregrounds[raise+1][0]);
