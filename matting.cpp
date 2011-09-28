@@ -114,10 +114,8 @@ double solve_equations(unsigned char* f0, unsigned char* f1, unsigned char* f2,
 
     diff = a2[0]-a0[0];
     quality += diff*diff;
-    return quality;
-  } else {
-    return quality;
   }
+  return quality;
 }
 
 // a1 and f1 unknown
@@ -306,9 +304,9 @@ int main() {
     }
   }
 
-  save_image("results/originals_9.ppm", width, height, 3, originals[9][0]);
-  save_image("results/foregrounds_9.ppm", width, height, 3, foregrounds[9][0]);
-  save_image("results/backgrounds_9.ppm", width, height, 3, backgrounds[9][0]);
+  save_image(RESULTS "originals_9.ppm", width, height, 3, originals[9][0]);
+  save_image(RESULTS "foregrounds_9.ppm", width, height, 3, foregrounds[9][0]);
+  save_image(RESULTS "backgrounds_9.ppm", width, height, 3, backgrounds[9][0]);
 
   while (raise > 0) {
     raise--;
@@ -353,13 +351,13 @@ int main() {
     }
 
     static char buffer[100];
-    snprintf(buffer, 100, "results/originals_%i_h.ppm", raise);
+    snprintf(buffer, 100, RESULTS "originals_%i_h.ppm", raise);
     save_image(buffer, width, height, 3, originals[raise][1]);
     
-    snprintf(buffer, 100, "results/foregrounds_%i_h.ppm", raise);
+    snprintf(buffer, 100, RESULTS "foregrounds_%i_h.ppm", raise);
     save_image(buffer, width, height, 3, foregrounds[raise][1]);
     
-    snprintf(buffer, 100, "results/backgrounds_%i_h.ppm", raise);
+    snprintf(buffer, 100, RESULTS "backgrounds_%i_h.ppm", raise);
     save_image(buffer, width, height, 3, backgrounds[raise][1]);
 
     // Width half
@@ -403,13 +401,13 @@ int main() {
       }
     }
 
-    snprintf(buffer, 100, "results/originals_%i.ppm", raise);
+    snprintf(buffer, 100, RESULTS "originals_%i.ppm", raise);
     save_image(buffer, width, height, 3, originals[raise][0]);
     
-    snprintf(buffer, 100, "results/foregrounds_%i.ppm", raise);
+    snprintf(buffer, 100, RESULTS "foregrounds_%i.ppm", raise);
     save_image(buffer, width, height, 3, foregrounds[raise][0]);
     
-    snprintf(buffer, 100, "results/backgrounds_%i.ppm", raise);
+    snprintf(buffer, 100, RESULTS "backgrounds_%i.ppm", raise);
     save_image(buffer, width, height, 3, backgrounds[raise][0]);
   }
 
@@ -437,7 +435,7 @@ int main() {
   }
   projection(new_foregrounds[0][0], new_backgrounds[0][0], merged_point, &(new_alphas[0][0][0]));
 
-  save_image("results/new_foregrounds_0.ppm", 1, 1, 3, new_foregrounds[0][0]);
+  save_image(RESULTS "new_foregrounds_0.ppm", 1, 1, 3, new_foregrounds[0][0]);
 
   
 
@@ -511,7 +509,7 @@ int main() {
     }
 
     static char buffer[100];
-    snprintf(buffer, 100, "results/final_%i_h.ppm", raise);
+    snprintf(buffer, 100, RESULTS "final_%i_h.ppm", raise);
     unsigned char *tmp = new unsigned char[width*height*3];
     for (int y=0; y<height; y++) {
       for (int x=0; x<width; x++) {
@@ -531,10 +529,10 @@ int main() {
     save_image(buffer, width, height, 3, tmp);
     delete[] tmp;
 
-    snprintf(buffer, 100, "results/new_foregrounds_%i_h.ppm", raise);
+    snprintf(buffer, 100, RESULTS "new_foregrounds_%i_h.ppm", raise);
     save_image(buffer, width, height, 3, new_foregrounds[raise][1]);
     
-    snprintf(buffer, 100, "results/new_alphas_%i_h.ppm", raise);
+    snprintf(buffer, 100, RESULTS "new_alphas_%i_h.ppm", raise);
     save_image(buffer, width, height, 1, new_alphas[raise][1]);
     
     cout << "second " << raise << endl;
@@ -598,7 +596,7 @@ int main() {
       }
     }
 
-    snprintf(buffer, 100, "results/final_%i.ppm", raise+1);
+    snprintf(buffer, 100, RESULTS "final_%i.ppm", raise+1);
     tmp = new unsigned char[width*height*3];
     for (int y=0; y<height; y++) {
       for (int x=0; x<width; x++) {
@@ -618,10 +616,10 @@ int main() {
     save_image(buffer, width, height, 3, tmp);
     delete[] tmp;
 
-    snprintf(buffer, 100, "results/new_foregrounds_%i.ppm", raise+1);
+    snprintf(buffer, 100, RESULTS "new_foregrounds_%i.ppm", raise+1);
     save_image(buffer, width, height, 3, new_foregrounds[raise+1][0]);
     
-    snprintf(buffer, 100, "results/new_alphas_%i.ppm", raise+1);
+    snprintf(buffer, 100, RESULTS "new_alphas_%i.ppm", raise+1);
     save_image(buffer, width, height, 1, new_alphas[raise+1][0]);
 
     raise++;
