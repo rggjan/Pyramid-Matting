@@ -56,21 +56,26 @@ double solve_equations(unsigned char* f0, unsigned char* f1, unsigned char* f2,
   a2[0] = 2*a0[0]-a1[0];
   for (int c=0; c<3; c++) {
     // set the same fore/background as in the combined pixel if it is not used
-    float div = 1-a1[0]/255.;
-    if (div != 0.0) {
-      nb1[c] = (c1[c] - f1[c]*a1[0]/255.)/div;
+    float alpha0 = a0[0]/255.;
+    float alpha1 = a1[0]/255.;
+    float background_alpha1 = 1-alpha1;
+    if (background_alpha1 != 0.0) {
+      nb1[c] = (c1[c] - f1[c]*alpha1)/background_alpha1;
     } else {
+      // TODO(rggjan): maybe remove line below?
       nb1[c] = b0[c];
     }
-    div = 2*a0[0]/255.-a1[0]/255.;
-    if (div != 0.0) {
-      nf2[c] = (2*f0[c]*a0[0]/255. - f1[c]*a1[0]/255.)/div;
+
+    float alpha2 = a2[0]/255.;
+    if (alpha2 != 0.0) {
+      nf2[c] = (2*f0[c]*alpha0 - f1[c]*alpha1)/alpha2;
     } else {
       nf2[c] = f0[c];
     }
-    div = 1-2*a0[0]+a1[0];
-    if (div != 0.0) {
-      nb2[c] = (c2[c] - (2*f0[c]*a0[0]-f1[c]*a1[0]))/div;
+
+    float background_alpha2 = 1-alpha2;
+    if (background_alpha2 != 0.0) {
+      nb2[c] = (c1[c] - nf2[c]*alpha2)/background_alpha2;
     } else {
       nb2[c] = b0[c];
     }
