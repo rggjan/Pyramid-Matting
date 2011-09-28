@@ -428,9 +428,9 @@ int main() {
 
     for (int y=0; y<height; y++) {
       for (int x=0; x<width; x+=2) {
-        unsigned char* f0 = &(new_foregrounds[raise][0][(y*width+x/2)*3]);
-        unsigned char* b0 = &(new_backgrounds[raise][0][(y*width+x/2)*3]);
-        unsigned char* a0 = &(new_alphas[raise][0][(y*width+x/2)]);
+        unsigned char* f0 = &(new_foregrounds[raise][0][(y*width/2+x/2)*3]);
+        unsigned char* b0 = &(new_backgrounds[raise][0][(y*width/2+x/2)*3]);
+        unsigned char* a0 = &(new_alphas[raise][0][(y*width/2+x/2)]);
 
         unsigned char* f1 = &(new_foregrounds[raise][1][(y*width+x)*3]);
         unsigned char* f2 = &(new_foregrounds[raise][1][(y*width+x+1)*3]);
