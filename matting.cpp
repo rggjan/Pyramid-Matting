@@ -57,7 +57,6 @@ double solve_equations(unsigned char* f0, unsigned char* f1, unsigned char* f2,
   }
   
   double quality = 0;
-  bool in_range = true;
   for (int c=0; c<3; c++) {
 
     double diff = nb1[c]-255;
@@ -421,6 +420,7 @@ int main() {
   
 
   while (raise <= 9) {
+    cout << "first " << raise << endl;
     width *= 2;
     new_foregrounds[raise][1] = new unsigned char[width*height*3];
     new_backgrounds[raise][1] = new unsigned char[width*height*3];
@@ -478,13 +478,13 @@ int main() {
 
         optimize(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
 
-        cout << "f0\tf1\tf2\tb0\tb1\tb2\tc1\tc2\n";
+        /*cout << "f0\tf1\tf2\tb0\tb1\tb2\tc1\tc2\n";
         for (int c=0; c<3; c++) {
           cout << (int)f0[c] << "\t" << (int)f1[c] << "\t" << (int)f2[c] << "\t" <<
             (int)b0[c] << "\t" << (int)b1[c] << "\t" << (int)b2[c] << "\t" <<
             (int)c1[c] << "\t" << (int)c2[c] << "\t" << "\n";
         }
-        cout << (int)a1[0] << "," << (int)a2[0] << endl;
+        cout << (int)a1[0] << "," << (int)a2[0] << endl;*/
       }
     }
 
@@ -515,8 +515,7 @@ int main() {
     snprintf(buffer, 100, "results/new_alphas_%i_h.ppm", raise);
     save_image(buffer, width, height, 1, new_alphas[raise][1]);
     
-   // exit(1);
-
+    cout << "second " << raise << endl;
     // Stretch height
     height *= 2;
     new_foregrounds[raise+1][0] = new unsigned char[width*height*3];
