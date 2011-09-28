@@ -4,7 +4,6 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <string.h>
-#include <math.h>
 
 using namespace std;
 
@@ -250,9 +249,8 @@ float projection (unsigned char B[3], unsigned char A[3], unsigned char P[3], un
   int APy = P[1] - A[1];
   int APz = P[2] - A[2];
 
-  float len_AB = sqrtf(ABx * ABx + ABy * ABy + ABz * ABz);
-  float len_AP = sqrtf(APx * APx + APy * APy + APz * APz);
-  float alpha = (ABx * APx + ABy * APy + ABz * APz) / (len_AB * len_AP);
+  int dot_AB = ABx * ABx + ABy * ABy + ABz * ABz;
+  float alpha = (float)(ABx * APx + ABy * APy + ABz * APz) / dot_AB;
 
   float PPx, PPy, PPz;
 
