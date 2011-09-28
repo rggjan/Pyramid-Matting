@@ -42,15 +42,79 @@ save_image (const char* filename, int dimx, int dimy, int num_colors, unsigned c
 }
 
 // a1 and f1 known
-void solve_equations(unsigned char* f0, unsigned char* f1, unsigned char* f2,
+double solve_equations(unsigned char* f0, unsigned char* f1, unsigned char* f2,
     unsigned char* b0, unsigned char* b1, unsigned char* b2,
     unsigned char* a0, unsigned char* a1, unsigned char* a2,
     unsigned char* c1, unsigned char* c2) {
+  int nb1[3];
+  int nf2[3];
+  int nb2[3];
   a2[0] = 2*a0[0]-a1[0];
   for (int c=0; c<3; c++) {
-    b1[c] = (c1[c] - f1[c]*a1[0])/(1-a1[0]);
-    f2[c] = (2*f0[c]*a0[0] - f1[c]*a1[0])/(2*a0[0]-a1[0]);
-    b2[c] = (c2[c] - (2*f0[c]*a0[0]-f1[c]*a1[0]))/(1-2*a0[0]+a1[0]);
+    nb1[c] = (c1[c] - f1[c]*a1[0]/255.)/(1-a1[0]/255.);
+    nf2[c] = (2*f0[c]*a0[0]/255. - f1[c]*a1[0]/255.)/(2*a0[0]/255.-a1[0]/255.);
+    nb2[c] = (c2[c] - (2*f0[c]*a0[0]-f1[c]*a1[0]))/(1-2*a0[0]+a1[0]);
+  }
+  
+  double quality = 0;
+  bool in_range = true;
+  for (int c=0; c<3; c++) {
+
+    double diff = nb1[c]-255;
+    if (diff > 0) {
+      quality -= diff*diff;
+      nb1[c] = 255;
+    } else if (nb1[c] < 0) {
+      quality -= nb1[c]*nb1[c];
+      nb1[c] = 0;
+    }
+
+    diff = nf2[c]-255;
+    if (diff > 0) {
+      quality -= diff*diff;
+      nf2[c] = 255;
+    } else if (nf2[c] < 0) {
+      quality -= nf2[c]*nf2[c];
+      nf2[c] = 0;
+    }
+    
+    diff = nb2[c]-255;
+    if (diff > 0) {
+      quality -= diff*diff;
+      nb2[c] = 255;
+    } else if (nb2[c] < 0) {
+      quality -= nb2[c]*nb2[c];
+      nb2[c] = 0;
+    }
+
+    b1[c] = nb1[c];
+    f2[c] = nf2[c];
+    b2[c] = nb2[c];
+  }
+
+  if (quality == 0) {
+    for (int c=0; c<3; c++) {
+      int diff = f1[c]-f0[c];
+      quality += diff*diff;
+      
+      diff = f2[c]-f0[c];
+      quality += diff*diff;
+      
+      diff = b1[c]-b0[c];
+      quality += diff*diff;
+      
+      diff = b2[c]-b0[c];
+      quality += diff*diff;
+    }
+      
+    int diff = a1[0]-a0[0];
+    quality += diff*diff;
+
+    diff = a2[0]-a0[0];
+    quality += diff*diff;
+    return quality;
+  } else {
+    return quality;
   }
 }
 
@@ -59,12 +123,41 @@ void optimize(unsigned char* f0, unsigned char* f1, unsigned char* f2,
     unsigned char* b0, unsigned char* b1, unsigned char* b2,
     unsigned char* a0, unsigned char* a1, unsigned char* a2,
     unsigned char* c1, unsigned char* c2) {
-  a1[0] = 128;
+
   f1[0] = f0[0];
   f1[1] = f0[1];
   f1[2] = f0[2];
+  int alpha = 128;
 
-  solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
+  for (int i=0; i<100; i++) {
+    int qplus, qminus;
+    a1[0] = alpha+1;
+    qplus = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
+
+    a1[0] = alpha-1;
+    qminus = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
+
+    cout << alpha+1 << "/" << alpha-1 << ": " << qplus << "/" << qminus << endl;
+    if (qplus > 0)
+      if (qminus > 0)
+        if (qplus < qminus)
+          alpha++;
+        else
+          alpha--;
+      else
+        alpha++;
+    else
+      if (qminus > 0)
+        alpha--;
+      else
+        if (qminus > qplus)
+          alpha--;
+        else
+          alpha++;
+
+  }
+  
+  exit(1);
 
   //cout << "alpha 0/1/2: " << (int)a0[0] << "/" << (int)a1[0] << "/" << (int)a2[0] << "\n";
 }
@@ -283,8 +376,9 @@ int main() {
   }
   projection(new_foregrounds[0][0], new_backgrounds[0][0], merged_point, &(new_alphas[0][0][0]));
 
-  printf("Alpha: %i\n", new_alphas[0][0][0]);
   save_image("results/new_foregrounds_0.ppm", 1, 1, 3, new_foregrounds[0][0]);
+
+  
 
   while (raise <= 9) {
     width *= 2;
@@ -306,11 +400,12 @@ int main() {
         
         unsigned char* a1 = &(new_alphas[raise][1][y*width+x]);
         unsigned char* a2 = &(new_alphas[raise][1][y*width+x+1]);
-
+  
         // Subtract known foreground / background 
         unsigned char* original1 = &(originals[raise][1][(y*width+x)*3]);
         unsigned char* original2 = &(originals[raise][1][(y*width+x+1)*3]);
        
+
         unsigned char* foreground1 = &(foregrounds[raise][1][(y*width+x)*3]);
         unsigned char* foreground2 = &(foregrounds[raise][1][(y*width+x+1)*3]);
         
@@ -335,14 +430,22 @@ int main() {
               /(1-foreground_ps2[0]-background_ps2[0]);
         }
         
+//        cout << foreground_ps1[0] << endl << endl;
+//        cout << foreground_ps2[0] << endl << endl;
+/*        for (int c=0; c<3; c++) {
+          cout << (int)c1[c] <<  "," << (int)c2[c] << endl;
+        }*/
+
         optimize(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
 
-        /*cout << "f0\tf1\tf2\tb0\tb1\tb2\tc1\tc2\n";
+        cout << "f0\tf1\tf2\tb0\tb1\tb2\tc1\tc2\n";
         for (int c=0; c<3; c++) {
           cout << (int)f0[c] << "\t" << (int)f1[c] << "\t" << (int)f2[c] << "\t" <<
             (int)b0[c] << "\t" << (int)b1[c] << "\t" << (int)b2[c] << "\t" <<
             (int)c1[c] << "\t" << (int)c2[c] << "\t" << "\n";
-        }*/
+        }
+        cout << (int)a1[0] << "," << (int)a2[0] << endl;
+        exit(1);
       }
     }
 
