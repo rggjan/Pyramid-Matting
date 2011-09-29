@@ -10,8 +10,9 @@
 using namespace std;
 
 //#define DEBUG_PROJECTION
-#define DEBUG_GET_VALUES
-#define DEBUG_SOLVE_EQUATIONS
+//#define DEBUG_GET_VALUES
+//#define DEBUG_SOLVE_EQUATIONS
+#define DEBUG_OPTIMIZE_LOOP
 
 unsigned char*
 load_image (const char* filename, int dimx, int dimy, int num_colors) {
@@ -89,8 +90,6 @@ double solve_equations(unsigned char* f0, unsigned char* f1, unsigned char* f2,
     }
 
     if (alpha2 != 0.0) {
-//      cout << alpha0 << endl;
-//      exit(0);
       nf2[c] = (2*f0[c]*up0*alpha0 - f1[c]*alpha1*up1)/(alpha2*up2);
     } else {
       nf2[c] = f0[c];
@@ -111,11 +110,9 @@ double solve_equations(unsigned char* f0, unsigned char* f1, unsigned char* f2,
       (int)nf2[c] << "\n";
   }
 #endif
-  exit(0);
 
   double quality = 0;
   for (int c=0; c<3; c++) {
-
     double diff = nb1[c]-255;
     if (diff > 0) {
       quality -= diff*diff;
@@ -184,11 +181,11 @@ void optimize(unsigned char* f0, unsigned char* f1, unsigned char* f2,
   unsigned char best_a = 0;
 
   int best_result = INT_MIN;
-  for (a1[0] = 100; a1[0] < 251; a1[0]+=4) {
+  for (a1[0] = 0; a1[0] < 251; a1[0]+=4) {
     cout << (int)a1[0] << "/255" << endl;
-    for (f1[0] = 10; f1[0] < 251; f1[0]+=4) {
-      for (f1[1] = 20; f1[1] < 251; f1[1]+=4) {
-        for (f1[2] = 30; f1[2] < 251; f1[2]+=4) {
+    for (f1[0] = 0; f1[0] < 251; f1[0]+=4) {
+      for (f1[1] = 0; f1[1] < 251; f1[1]+=4) {
+        for (f1[2] = 0; f1[2] < 251; f1[2]+=4) {
           int result = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2, up0, up1, up2);
           if (best_result < 0) {
             if (result > best_result) {
@@ -197,7 +194,16 @@ void optimize(unsigned char* f0, unsigned char* f1, unsigned char* f2,
               for (int c=0; c<3; c++) {
                 best_f1[c] = f1[c];
               }
-              cout << (int)f1[0] << "/" << (int)f1[1] << "/" << (int)f1[2] << "/" << (int)a1[0] << ":" << best_result << endl;
+#ifdef DEBUG_OPTIMIZE_LOOP
+              cout << "New best result: " << best_result << "\n";
+              cout << "a1: " << (int)a1[0] << "\n";
+              cout << "a2: " << (int)a2[0] << "\n";
+              cout << "f1\tf2\tb1\tb2\n";
+              for (int c=0; c<3; c++) {
+                cout << (int)f1[c] << "\t" << (int)f2[c] << "\t" << (int)b1[c] << "\t" <<
+                  (int)b2[c] << "\n";
+              }
+#endif
             }
           } else {
             if (result > 0 && result < best_result) {
@@ -206,7 +212,16 @@ void optimize(unsigned char* f0, unsigned char* f1, unsigned char* f2,
               for (int c=0; c<3; c++) {
                 best_f1[c] = f1[c];
               }
-              cout << (int)f1[0] << "/" << (int)f1[1] << "/" << (int)f1[2] << "/" << (int)a1[0] << ":" << best_result << endl;
+#ifdef DEBUG_OPTIMIZE_LOOP
+              cout << "New best result: " << best_result << "\n";
+              cout << "a1: " << (int)a1[0] << "\n";
+              cout << "a2: " << (int)a2[0] << "\n";
+              cout << "f1\tf2\tb1\tb2\n";
+              for (int c=0; c<3; c++) {
+                cout << (int)f1[c] << "\t" << (int)f2[c] << "\t" << (int)b1[c] << "\t" <<
+                  (int)b2[c] << "\n";
+              }
+#endif
             }
           }
         }
@@ -308,11 +323,11 @@ void optimize(unsigned char* f0, unsigned char* f1, unsigned char* f2,
     }
   }*/
   
-  //exit(1);
-              a1[0] = best_a;
-              for (int c=0; c<3; c++) {
-                f1[c] = best_f1[c];
-              }
+  a1[0] = best_a;
+  for (int c=0; c<3; c++) {
+    f1[c] = best_f1[c];
+  }
+  solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2, up0, up1, up2);
 
   //cout << "alpha 0/1/2: " << (int)a0[0] << "/" << (int)a1[0] << "/" << (int)a2[0] << "\n";
 }
@@ -686,7 +701,6 @@ int main() {
 
         if (foreground_ps1[0] == 1 || foreground_ps2[0] == 1) {
           cout << "Foreground_ps1" << endl;
-          exit(0);/*
           if (foreground_ps1[0] == 1) {
             f2[0] = f0[0];
             f2[1] = f0[1];
@@ -703,7 +717,7 @@ int main() {
             b1[1] = b0[1];
             b1[2] = b0[2];
             a1[0] = a0[0];
-          }*/
+          }
         } else {
           for (int c=0; c<3; c++) {
             c1[c] = (original1[c] - foreground_ps1[0]*foreground1[c]
@@ -728,8 +742,6 @@ int main() {
         }
       }
     }
-
-    //exit(0);
 
     static char buffer[100];
     snprintf(buffer, 100, RESULTS "final_%i_h.ppm", raise);
@@ -761,8 +773,10 @@ int main() {
     snprintf(buffer, 100, RESULTS "new_alphas_%i_h.ppm", raise);
     save_image(buffer, width, height, 1, new_alphas[raise][1]);
     
-    cout << "second " << raise << endl;
+    //exit(0);
+    
     // Stretch height
+    cout << "============= size(h): " << pow(2, raise) << "=============" << endl;
     height *= 2;
     new_foregrounds[raise+1][0] = new unsigned char[width*height*3];
     new_backgrounds[raise+1][0] = new unsigned char[width*height*3];
@@ -802,7 +816,6 @@ int main() {
         unsigned char c1[3];
         unsigned char c2[3];
 
-
         if (foreground_ps1[0] == 1 || foreground_ps2[0] == 1) {
           if (foreground_ps1[0] == 1) {
             f2[0] = f0[0];
@@ -837,13 +850,6 @@ int main() {
           up0 = (up1+up2)/2;
           optimize(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2, up0, up1, up2);
         }
-
-/*        cout << "f0\tf1\tf2\tb0\tb1\tb2\tc1\tc2\n";
-        for (int c=0; c<3; c++) {
-          cout << (int)f0[c] << "\t" << (int)f1[c] << "\t" << (int)f2[c] << "\t" <<
-            (int)b0[c] << "\t" << (int)b1[c] << "\t" << (int)b2[c] << "\t" <<
-            (int)c1[c] << "\t" << (int)c2[c] << "\t" << "\n";
-        }*/
       }
     }
 
