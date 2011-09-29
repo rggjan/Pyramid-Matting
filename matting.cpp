@@ -292,23 +292,67 @@ void optimize(unsigned char* f0, unsigned char* f1, unsigned char* f2,
 // alpha_pointer receives the calculated alpha value between 0 and 1
 // where (0=A, 1=B)
 // returns the squared distance of the best projected point to P
-float projection (unsigned char B[3], unsigned char A[3], unsigned char P[3], unsigned char* alpha_pointer) {
-  int ABx = B[0] - A[0];
-  int ABy = B[1] - A[1];
-  int ABz = B[2] - A[2];
+void projection (unsigned char B[3], unsigned char A[3], unsigned char P[3], unsigned char* alpha_pointer) {
+  double AB[3];
+  AB[0] = B[0] - A[0];
+  AB[1] = B[1] - A[1];
+  AB[2] = B[2] - A[2];
 
-  int APx = P[0] - A[0];
-  int APy = P[1] - A[1];
-  int APz = P[2] - A[2];
+  double AP[3];
+  AP[0] = P[0] - A[0];
+  AP[1] = P[1] - A[1];
+  AP[2] = P[2] - A[2];
 
-  int dot_AB = ABx * ABx + ABy * ABy + ABz * ABz;
-  float alpha = (float)(ABx * APx + ABy * APy + ABz * APz) / dot_AB;
+  double dot_AB = AB[0] * AB[0] + AB[1] * AB[1] + AB[2] * AB[2];
+  double alpha = (double)(AB[0] * AP[0] + AB[1] * AP[1] + AB[2] * AP[2])
+    /dot_AB;
 
-  float PPx, PPy, PPz;
+  double PP[3];
 
-  PPx = P[0] - (A[0] + alpha * ABx);
-  PPy = P[1] - (A[1] + alpha * ABy);
-  PPz = P[2] - (A[2] + alpha * ABz);
+  PP[0] = P[0] - (A[0] + alpha * AB[0]);
+  PP[1] = P[1] - (A[1] + alpha * AB[1]);
+  PP[2] = P[2] - (A[2] + alpha * AB[2]);
+
+  double new_A[3];
+  double new_B[3];
+
+  for (int c=0; c<3; c++) {
+    new_A[c] = A[c] + PP[c];
+    new_B[c] = B[c] + PP[c];
+  }
+
+
+  for (int c=0; c<3; c++) {
+    if (new_A[c] < 0) {
+      double factor = (0-P[c])/(new_A[c]-P[c]);
+      alpha *= (0-new_B[c])/(new_A[c]-new_B[c]);
+      for (int new_c=0; new_c<3; new_c++) {
+        new_A[new_c] = P[new_c]+factor*(new_A[new_c]-P[new_c]);
+      }
+    }
+    if (new_A[c] > 255) {
+      double factor = (255-P[c])/(new_A[c]-P[c]);
+      alpha *= (255-new_B[c])/(new_A[c]-new_B[c]);
+      for (int new_c=0; new_c<3; new_c++) {
+        new_A[new_c] = P[new_c]+factor*(new_A[new_c]-P[new_c]);
+      }
+    }
+    if (new_B[c] < 0) {
+      double factor = (0-P[c])/(new_B[c]-P[c]);
+      alpha *= (0-new_A[c])/(new_B[c]-new_A[c]);
+      for (int new_c=0; new_c<3; new_c++) {
+        new_B[new_c] = P[new_c]+factor*(new_B[new_c]-P[new_c]);
+      }
+    }
+    if (new_B[c] > 255) {
+      double factor = (255-PP[c])/(new_B[c]-PP[c]);
+      alpha *= (255-new_A[c])/(new_B[c]-new_A[c]);
+      for (int new_c=0; new_c<3; new_c++) {
+        new_B[new_c] = PP[new_c]+factor*(new_B[new_c]-PP[new_c]);
+      }
+    }
+  }
+  // TODO fix this calculation, not entirely right!
 
   alpha = alpha > 1 ? 1 : (alpha < 0 ? 0 : alpha);
 
@@ -316,8 +360,14 @@ float projection (unsigned char B[3], unsigned char A[3], unsigned char P[3], un
     *alpha_pointer = (unsigned char)(alpha*255);
   }
 
+  for (int c=0; c<3; c++) {
+    A[c] = new_A[c];
+    B[c] = new_B[c];
+  }
+
+
   // Normalize, so that it is in the unit cube of colors
-  return (PPx * PPx + PPy * PPy + PPz * PPz) / (255. * 255.);
+  // return (PP[0] * PP[0] + PP[1] * PP[1] + PP[2] * PP[2]) / (255. * 255.);
 }
 
 #define RESULTS "results/"
@@ -519,8 +569,14 @@ int main() {
       /(1-foreground_ps[0][0][0]-background_ps[0][0][0]);
   }
 
-  // TODO(rggjan): we need a better foreground/background approximation here!
+
   projection(new_foregrounds[0][0], new_backgrounds[0][0], merged_point, &(new_alphas[0][0][0]));
+
+
+  for (int c=0; c<3; c++) {
+    cout << (int)new_foregrounds[0][0][c] << "\t" << (int)new_backgrounds[0][0][c]
+      << "\t" << (int)merged_point[c] << endl;
+  }
   /*for (int c=0; c<3; c++) {
     cout << (int)new_foregrounds[0][0][c] <<"\t"<<(int)new_backgrounds[0][0][c]
       <<"\t"<<(int)merged_point[c]<<endl;
