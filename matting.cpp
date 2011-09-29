@@ -741,20 +741,20 @@ int main() {
         unsigned char best_bg2[3];
         unsigned char best_a1;
         unsigned char best_a2;
-        for (int i=0; i<10; i++) {
+        for (int i=0; i<100; i++) {
           double best_1 = -1;
           double best_2 = -1;
           for (int c=0; c<3; c++) {
-            
+            int r = 4;
             f1[c]=foreground1[c]*foreground_ps1[0]+
-              (1-foreground_ps1[0])*(f0[c]-3 +((f0[c]<253&&f0[c]>2)?rand()%7:3));
+              (1-foreground_ps1[0])*(f0[c]-r +((f0[c]<256-r&&f0[c]>=r)?rand()%(r*2+1):r));
             b1[c]=background1[c]*background_ps1[0]+
-              (1-background_ps1[0])*(b0[c]-3 +((b0[c]<253&&b0[c]>2)?rand()%7:3));
+              (1-background_ps1[0])*(b0[c]-r +((b0[c]<256-r&&b0[c]>=r)?rand()%(r*2+1):r));
             f2[c]=foreground2[c]*foreground_ps2[0]
-              +(1-foreground_ps2[0])*(f0[c]-3 +((f0[c]<253&&f0[c]>2)?rand()%7:3));
+              +(1-foreground_ps2[0])*(f0[c]-r +((f0[c]<256-r&&f0[c]>=r)?rand()%(r*2+1):r));
             b2[c]=background2[c]*background_ps2[0]
-              +(1-background_ps2[0])*(b0[c]-3 +((b0[c]<253&&b0[c]>2)?rand()%7:3));
-
+              +(1-background_ps2[0])*(b0[c]-r +((b0[c]<256-r&&b0[c]>=r)?rand()%(r*2+1):r));
+            
           }
           double score1 = projection(f1, b1, original1, a1);
           if (score1 < best_1 || best_1 == -1) {
@@ -909,18 +909,19 @@ int main() {
         unsigned char best_bg2[3];
         unsigned char best_a1;
         unsigned char best_a2;
-        for (int i=0; i<10; i++) {
+        for (int i=0; i<100; i++) {
           double best_1 = -1;
           double best_2 = -1;
           for (int c=0; c<3; c++) {
+            int r = 4;
             f1[c]=foreground1[c]*foreground_ps1[0]+
-              (1-foreground_ps1[0])*(f0[c]-3 +((f0[c]<253&&f0[c]>2)?rand()%7:3));
+              (1-foreground_ps1[0])*(f0[c]-r +((f0[c]<256-r&&f0[c]>=r)?rand()%(r*2+1):r));
             b1[c]=background1[c]*background_ps1[0]+
-              (1-background_ps1[0])*(b0[c]-3 +((b0[c]<253&&b0[c]>2)?rand()%7:3));
+              (1-background_ps1[0])*(b0[c]-r +((b0[c]<256-r&&b0[c]>=r)?rand()%(r*2+1):r));
             f2[c]=foreground2[c]*foreground_ps2[0]
-              +(1-foreground_ps2[0])*(f0[c]-3 +((f0[c]<253&&f0[c]>2)?rand()%7:3));
+              +(1-foreground_ps2[0])*(f0[c]-r +((f0[c]<256-r&&f0[c]>=r)?rand()%(r*2+1):r));
             b2[c]=background2[c]*background_ps2[0]
-              +(1-background_ps2[0])*(b0[c]-3 +((b0[c]<253&&b0[c]>2)?rand()%7:3));
+              +(1-background_ps2[0])*(b0[c]-r +((b0[c]<256-r&&b0[c]>=r)?rand()%(r*2+1):r));
 
           }
           double score1 = projection(f1, b1, original1, a1);
