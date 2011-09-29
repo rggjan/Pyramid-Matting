@@ -745,7 +745,7 @@ int main() {
           double best_1 = -1;
           double best_2 = -1;
           for (int c=0; c<3; c++) {
-            int r = 4;
+            int r = 1;
             f1[c]=foreground1[c]*foreground_ps1[0]+
               (1-foreground_ps1[0])*(f0[c]-r +((f0[c]<256-r&&f0[c]>=r)?rand()%(r*2+1):r));
             b1[c]=background1[c]*background_ps1[0]+
@@ -902,6 +902,61 @@ int main() {
         up1 = (1-background_ps1[0]-foreground_ps1[0]);
         up2 = (1-background_ps2[0]-foreground_ps2[0]);
         up0 = (up1+up2)/2;
+
+        double foreground_avg[3] = {0};
+        double background_avg[3] = {0};
+        int f_counter = 0;
+        int b_counter = 0;
+        for (int xdiff=-1; xdiff<=1; xdiff++) {
+          for (int ydiff=-1; ydiff<=1; ydiff++) {
+            if (!(x+xdiff>=0 && y/2+ydiff>=0 && x+xdiff < width && y/2+ydiff < height/2))
+              continue;
+
+            if (foreground_ps[raise][1][((y/2+ydiff)*width+(x+xdiff))] > 0) {
+              f_counter++;
+              for (int c=0; c<3; c++) {
+                foreground_avg[c] += new_foregrounds[raise][1][((y/2+ydiff)*width+(x+xdiff))*3+c];
+              }
+            }
+            if (background_ps[raise][1][((y/2+ydiff)*width+(x+xdiff))] > 0) {
+              f_counter++;
+              for (int c=0; c<3; c++) {
+                background_avg[c] += new_backgrounds[raise][1][((y/2+ydiff)*width+(x+xdiff))*3+c];
+              }
+            }
+          }
+        }
+        for (int c=0; c<3; c++) {
+          foreground_avg[c] /= f_counter;
+          background_avg[c] /= b_counter;
+        }
+
+        double foreground_var = 0;
+        double background_var = 0;
+        for (int xdiff=-1; xdiff<=1; xdiff++) {
+          for (int ydiff=-1; ydiff<=1; ydiff++) {
+            if (!(x+xdiff>=0 && y/2+ydiff>=0 && x+xdiff < width && y/2+ydiff < height/2))
+              continue;
+            
+            if (foreground_ps[raise][1][((y/2+ydiff)*width+(x+xdiff))] > 0) {
+              for (int c=0; c<3; c++) {
+                double tmp;
+                tmp = new_foregrounds[raise][1][(((y+ydiff)/2)*width+(x+xdiff))*3+c] - foreground_avg[c];
+                foreground_var += tmp*tmp;
+              }
+            }
+            if (background_ps[raise][1][((y/2+ydiff)*width+(x+xdiff))] > 0) {
+              for (int c=0; c<3; c++) {
+                double tmp;
+                tmp = new_backgrounds[raise][1][(((y+ydiff)/2)*width+(x+xdiff))*3+c] - background_avg[c];
+                background_var += tmp*tmp;
+              }
+            }
+          }
+        }
+        foreground_var = sqrt(foreground_var/f_counter);
+        background_var = sqrt(background_var/b_counter);
+        //cout << f_counter << "," << b_counter << "," << foreground_var << "/" << background_var << endl;
         
         unsigned char best_fg1[3];
         unsigned char best_bg1[3];
@@ -909,19 +964,28 @@ int main() {
         unsigned char best_bg2[3];
         unsigned char best_a1;
         unsigned char best_a2;
-        for (int i=0; i<100; i++) {
+        for (int i=0; i<200; i++) {
           double best_1 = -1;
           double best_2 = -1;
           for (int c=0; c<3; c++) {
-            int r = 4;
+            int r, r2;
+            if (f_counter > 1)
+              r = foreground_var/3;
+            else
+              r = 0;
+            if (b_counter > 1)
+              r2 = background_var/3;
+            else
+              r2 = 0;
+
             f1[c]=foreground1[c]*foreground_ps1[0]+
               (1-foreground_ps1[0])*(f0[c]-r +((f0[c]<256-r&&f0[c]>=r)?rand()%(r*2+1):r));
             b1[c]=background1[c]*background_ps1[0]+
-              (1-background_ps1[0])*(b0[c]-r +((b0[c]<256-r&&b0[c]>=r)?rand()%(r*2+1):r));
+              (1-background_ps1[0])*(b0[c]-r2 +((b0[c]<256-r2&&b0[c]>=r2)?rand()%(r2*2+1):r2));
             f2[c]=foreground2[c]*foreground_ps2[0]
               +(1-foreground_ps2[0])*(f0[c]-r +((f0[c]<256-r&&f0[c]>=r)?rand()%(r*2+1):r));
             b2[c]=background2[c]*background_ps2[0]
-              +(1-background_ps2[0])*(b0[c]-r +((b0[c]<256-r&&b0[c]>=r)?rand()%(r*2+1):r));
+              +(1-background_ps2[0])*(b0[c]-r2 +((b0[c]<256-r2&&b0[c]>=r2)?rand()%(r2*2+1):r2));
 
           }
           double score1 = projection(f1, b1, original1, a1);
