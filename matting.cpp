@@ -10,9 +10,9 @@
 using namespace std;
 
 //#define DEBUG_PROJECTION
-//#define DEBUG_GET_VALUES
+#define DEBUG_GET_VALUES
 //#define DEBUG_SOLVE_EQUATIONS
-#define DEBUG_OPTIMIZE_LOOP
+//#define DEBUG_OPTIMIZE_LOOP
 
 unsigned char*
 load_image (const char* filename, int dimx, int dimy, int num_colors) {
@@ -700,7 +700,6 @@ int main() {
         unsigned char c2[3];
 
         if (foreground_ps1[0] == 1 || foreground_ps2[0] == 1) {
-          cout << "Foreground_ps1" << endl;
           if (foreground_ps1[0] == 1) {
             f2[0] = f0[0];
             f2[1] = f0[1];
@@ -739,6 +738,15 @@ int main() {
           up2 = (1-background_ps2[0]-foreground_ps2[0]);
           up0 = (up1+up2)/2;
           optimize(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2, up0, up1, up2);
+#ifdef DEBUG_GET_VALUES
+          cout << "\na1: " << (int)a1[0] << "\n";
+          cout << "a2: " << (int)a2[0] << "\n";
+          cout << "f1\tf2\tb1\tb2\n";
+          for (int c=0; c<3; c++) {
+            cout << (int)f1[c] << "\t" << (int)f2[c] << "\t" <<
+              (int)b1[c] << "\t" << (int)b2[c] << "\n";
+          }
+#endif
         }
       }
     }
@@ -773,8 +781,6 @@ int main() {
     snprintf(buffer, 100, RESULTS "new_alphas_%i_h.ppm", raise);
     save_image(buffer, width, height, 1, new_alphas[raise][1]);
     
-    //exit(0);
-    
     // Stretch height
     cout << "============= size(h): " << pow(2, raise) << "=============" << endl;
     height *= 2;
@@ -807,11 +813,26 @@ int main() {
         unsigned char* background1 = &(backgrounds[raise+1][0][(y*width+x)*3]);
         unsigned char* background2 = &(backgrounds[raise+1][0][((y+1)*width+x)*3]);
 
-        double* foreground_ps1 = &(foreground_ps[raise+1][0][((y+1)*width+x)]);
+        double* foreground_ps1 = &(foreground_ps[raise+1][0][(y*width+x)]);
         double* foreground_ps2 = &(foreground_ps[raise+1][0][((y+1)*width+x)]);
         
-        double* background_ps1 = &(background_ps[raise+1][0][((y+1)*width+x)]);
+        double* background_ps1 = &(background_ps[raise+1][0][(y*width+x)]);
         double* background_ps2 = &(background_ps[raise+1][0][((y+1)*width+x)]);
+
+#ifdef DEBUG_GET_VALUES
+        cout << "a0:\t" << (int)a0[0] << endl;
+        cout << "fg_ps1:\t" << foreground_ps1[0]
+          << "\nfg_ps2:\t" << foreground_ps2[0]
+          << "\nbg_ps1:\t" << background_ps1[0]
+          << "\nbg_ps2:\t" << background_ps2[0] << "\n";
+        cout << "f0\tb0\torig1\torig2\tbg1\tbg2\tfg1\tfg2\t\n";
+        for (int c=0; c<3; c++) {
+          cout << (int)f0[c] << "\t" << (int)b0[c] << "\t"
+            << (int)original1[c] << "\t" << (int)original2[c] << "\t"
+            << (int)background1[c] << "\t" << (int)background2[c] << "\t"
+            << (int)foreground1[c] << "\t" << (int)foreground2[c] << "\n";
+        }
+#endif
 
         unsigned char c1[3];
         unsigned char c2[3];
@@ -844,6 +865,13 @@ int main() {
                 -background_ps2[0]*background2[c])
                 /(1-foreground_ps2[0]-background_ps2[0]);
           }
+
+#ifdef DEBUG_GET_VALUES
+          cout << "\nc1\tc2\n";
+          for (int c=0; c<3; c++) {
+            cout << (int)c1[c] << "\t" << (int)c2[c] << "\n";
+          }
+#endif
           double up0, up1, up2;
           up1 = (1-background_ps1[0]-foreground_ps1[0]);
           up2 = (1-background_ps2[0]-foreground_ps2[0]);
@@ -882,6 +910,7 @@ int main() {
     snprintf(buffer, 100, RESULTS "new_alphas_%i.ppm", raise+1);
     save_image(buffer, width, height, 1, new_alphas[raise+1][0]);
 
+    exit(0);
     raise++;
   }
 
