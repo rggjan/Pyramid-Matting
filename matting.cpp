@@ -7,6 +7,8 @@
 
 using namespace std;
 
+#define DEBUG_PROJECTION
+
 unsigned char*
 load_image (const char* filename, int dimx, int dimy, int num_colors) {
   unsigned char* data = new unsigned char[dimx*dimy*num_colors];
@@ -288,86 +290,103 @@ void optimize(unsigned char* f0, unsigned char* f1, unsigned char* f2,
   //cout << "alpha 0/1/2: " << (int)a0[0] << "/" << (int)a1[0] << "/" << (int)a2[0] << "\n";
 }
 
-// Project the Point P onto the line from A-B.
-// alpha_pointer receives the calculated alpha value between 0 and 1
-// where (0=A, 1=B)
-// returns the squared distance of the best projected point to P
-void projection (unsigned char B[3], unsigned char A[3], unsigned char P[3], unsigned char* alpha_pointer) {
-  double AB[3];
-  AB[0] = B[0] - A[0];
-  AB[1] = B[1] - A[1];
-  AB[2] = B[2] - A[2];
+void projection (unsigned char F[3], unsigned char B[3], unsigned char C[3], unsigned char* alpha_pointer) {
+#ifdef DEBUG_PROJECTION
+  cout << "F\tB\tC\n";
+  for (int c=0; c<3; c++) {
+    cout << (int)F[c] << "\t" << (int)B[c] << "\t" << (int)C[c] << "\n";
+  }
+#endif
 
-  double AP[3];
-  AP[0] = P[0] - A[0];
-  AP[1] = P[1] - A[1];
-  AP[2] = P[2] - A[2];
-
-  double dot_AB = AB[0] * AB[0] + AB[1] * AB[1] + AB[2] * AB[2];
-  double alpha = (double)(AB[0] * AP[0] + AB[1] * AP[1] + AB[2] * AP[2])
-    /dot_AB;
-
-  double PP[3];
-
-  PP[0] = P[0] - (A[0] + alpha * AB[0]);
-  PP[1] = P[1] - (A[1] + alpha * AB[1]);
-  PP[2] = P[2] - (A[2] + alpha * AB[2]);
-
-  double new_A[3];
-  double new_B[3];
+  double BF[3];
+  double BC[3];
+  double dot_BF_BF = 0;
+  double dot_BF_BC = 0;
 
   for (int c=0; c<3; c++) {
-    new_A[c] = A[c] + PP[c];
-    new_B[c] = B[c] + PP[c];
+    BF[c] = F[c] - B[c];
+    BC[c] = C[c] - B[c];
+    dot_BF_BF += BF[c]*BF[c];
+    dot_BF_BC += BF[c]*BC[c];
   }
 
+  double alpha = dot_BF_BC/dot_BF_BF;
+
+#ifdef DEBUG_PROJECTION
+  cout << "=> alpha = " << alpha << endl;
+#endif
+
+  double CC[3];
 
   for (int c=0; c<3; c++) {
-    if (new_A[c] < 0) {
-      double factor = (0-P[c])/(new_A[c]-P[c]);
-      alpha *= (0-new_B[c])/(new_A[c]-new_B[c]);
-      for (int new_c=0; new_c<3; new_c++) {
-        new_A[new_c] = P[new_c]+factor*(new_A[new_c]-P[new_c]);
-      }
-    }
-    if (new_A[c] > 255) {
-      double factor = (255-P[c])/(new_A[c]-P[c]);
-      alpha *= (255-new_B[c])/(new_A[c]-new_B[c]);
-      for (int new_c=0; new_c<3; new_c++) {
-        new_A[new_c] = P[new_c]+factor*(new_A[new_c]-P[new_c]);
-      }
-    }
+    CC[c] = C[c] - (B[c] + alpha * BF[c]);
+  }
+
+  double new_B[3];
+  double new_F[3];
+
+  for (int c=0; c<3; c++) {
+    new_B[c] = B[c] + CC[c];
+    new_F[c] = F[c] + CC[c];
+  }
+
+#ifdef DEBUG_PROJECTION
+  cout << "\nF\t=>\tnew_F\n";
+  for (int c=0; c<3; c++) {
+    cout << (int)F[c] << "\t" << "" << "\t" << new_F[c] << "\n";
+  }
+  cout << "\nB\t=>\tnew_B\n";
+  for (int c=0; c<3; c++) {
+    cout << (int)B[c] << "\t" << "" << "\t" << new_B[c] << "\n";
+  }
+#endif
+
+  for (int c=0; c<3; c++) {
     if (new_B[c] < 0) {
-      double factor = (0-P[c])/(new_B[c]-P[c]);
-      alpha *= (0-new_A[c])/(new_B[c]-new_A[c]);
+      double factor = (0-C[c])/(new_B[c]-C[c]);
       for (int new_c=0; new_c<3; new_c++) {
-        new_B[new_c] = P[new_c]+factor*(new_B[new_c]-P[new_c]);
+        new_B[new_c] = C[new_c]+factor*(new_B[new_c]-C[new_c]);
       }
     }
     if (new_B[c] > 255) {
-      double factor = (255-PP[c])/(new_B[c]-PP[c]);
-      alpha *= (255-new_A[c])/(new_B[c]-new_A[c]);
+      double factor = (255-C[c])/(new_B[c]-C[c]);
       for (int new_c=0; new_c<3; new_c++) {
-        new_B[new_c] = PP[new_c]+factor*(new_B[new_c]-PP[new_c]);
+        new_B[new_c] = C[new_c]+factor*(new_B[new_c]-C[new_c]);
+      }
+    }
+    if (new_F[c] < 0) {
+      double factor = (0-C[c])/(new_F[c]-C[c]);
+      for (int new_c=0; new_c<3; new_c++) {
+        new_F[new_c] = C[new_c]+factor*(new_F[new_c]-C[new_c]);
+      }
+    }
+    if (new_F[c] > 255) {
+      double factor = (255-C[c])/(new_F[c]-C[c]);
+      for (int new_c=0; new_c<3; new_c++) {
+        new_F[new_c] = C[new_c]+factor*(new_F[new_c]-C[new_c]);
       }
     }
   }
-  // TODO fix this calculation, not entirely right!
 
-  alpha = alpha > 1 ? 1 : (alpha < 0 ? 0 : alpha);
-
-  if (alpha_pointer) {
-    *alpha_pointer = (unsigned char)(alpha*255);
+#ifdef DEBUG_PROJECTION
+  cout << "\nNormalize:\n";
+  cout << "new_F\t\tnew_B\n";
+  for (int c=0; c<3; c++) {
+    cout << new_F[c] << "\t\t" << new_B[c] << "\n";
   }
+#endif
+  
+  double new_alpha = (C[0] - new_B[0])/(new_F[0] - new_B[0]);
+#ifdef DEBUG_PROJECTION
+  cout << "=> new_alpha = " << new_alpha << endl;
+#endif
+
+  *alpha_pointer = (unsigned char)(alpha*255);
 
   for (int c=0; c<3; c++) {
-    A[c] = new_A[c];
     B[c] = new_B[c];
+    F[c] = new_F[c];
   }
-
-
-  // Normalize, so that it is in the unit cube of colors
-  // return (PP[0] * PP[0] + PP[1] * PP[1] + PP[2] * PP[2]) / (255. * 255.);
 }
 
 #define RESULTS "results/"
