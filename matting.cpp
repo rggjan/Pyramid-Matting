@@ -115,28 +115,22 @@ double solve_equations(unsigned char* f0, unsigned char* f1, unsigned char* f2,
   for (int c=0; c<3; c++) {
     double diff = nb1[c]-255;
     if (diff > 0) {
-      quality -= diff*diff;
       nb1[c] = 255;
     } else if (nb1[c] < 0) {
-      quality -= nb1[c]*nb1[c];
       nb1[c] = 0;
     }
 
     diff = nf2[c]-255;
     if (diff > 0) {
-      quality -= diff*diff;
       nf2[c] = 255;
     } else if (nf2[c] < 0) {
-      quality -= nf2[c]*nf2[c];
       nf2[c] = 0;
     }
     
     diff = nb2[c]-255;
     if (diff > 0) {
-      quality -= diff*diff;
       nb2[c] = 255;
     } else if (nb2[c] < 0) {
-      quality -= nb2[c]*nb2[c];
       nb2[c] = 0;
     }
 
@@ -158,6 +152,18 @@ double solve_equations(unsigned char* f0, unsigned char* f1, unsigned char* f2,
       quality += diff*diff;
       
       diff = b2[c]-b0[c];
+      quality += diff*diff;
+
+      diff = (((int)f1[c])*a1[c]+b1[c]*(1-a1[c])) - c1[c];
+      quality += diff*diff;
+      
+      diff = (((int)f2[c])*a2[c]+b2[c]*(2-a2[c])) - c2[c];
+      quality += diff*diff;
+
+      diff = (f1[c]*up1*a1[c]+f2[c]*up2*a2[c])/(2*up0*a0[c]) - f0[c];
+      quality += diff*diff;
+
+      diff = (b1[c]*up1*(1-a1[c]) + b2[c]*up2*(1-a2[c]))/(2*up0*(1-a0[c])) - b0[c];
       quality += diff*diff;
     }
       
@@ -182,7 +188,7 @@ void optimize(unsigned char* f0, unsigned char* f1, unsigned char* f2,
 
   int best_result = INT_MIN;
   for (a1[0] = 0; a1[0] < 251; a1[0]+=4) {
-    cout << (int)a1[0] << "/255" << endl;
+    //cout << (int)a1[0] << "/255" << endl;
     for (f1[0] = 0; f1[0] < 251; f1[0]+=4) {
       for (f1[1] = 0; f1[1] < 251; f1[1]+=4) {
         for (f1[2] = 0; f1[2] < 251; f1[2]+=4) {
@@ -434,6 +440,29 @@ void projection (unsigned char F[3], unsigned char B[3], unsigned char C[3], uns
 #define RESULTS "results/"
 
 int main() {
+
+  /*unsigned char f0[3] = {236, 192, 140};
+//  unsigned char f1[3];
+  unsigned char f2[3];
+  unsigned char b0[3] = {78, 124, 0};
+  unsigned char b1[3];
+  unsigned char b2[3];
+  unsigned char a0[1] = {111};
+//  unsigned char a1[1];
+  unsigned char a2[1];
+  unsigned char c1[3] = {148, 150, 62};
+  unsigned char c2[3] = {224, 70, 60};
+
+  unsigned char f1[3] = {77, 196, 157};
+  unsigned char a1[1] = {111};
+  double up1 = 1-0.641312-0.0633545;
+  double up2 = 1-0.992706-0;
+  double up0 = (up1+up2)/2;
+
+  optimize(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2, up0, up1, up2);
+  exit(0);
+*/
+
   // ensure the "result" directory exists
   struct stat result_dir;
   if (stat(RESULTS, &result_dir) < 0) {
@@ -739,6 +768,7 @@ int main() {
           up0 = (up1+up2)/2;
           optimize(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2, up0, up1, up2);
 #ifdef DEBUG_GET_VALUES
+          cout << "---- optimize ----\n";
           cout << "\na1: " << (int)a1[0] << "\n";
           cout << "a2: " << (int)a2[0] << "\n";
           cout << "f1\tf2\tb1\tb2\n";
@@ -877,6 +907,16 @@ int main() {
           up2 = (1-background_ps2[0]-foreground_ps2[0]);
           up0 = (up1+up2)/2;
           optimize(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2, up0, up1, up2);
+#ifdef DEBUG_GET_VALUES
+          cout << "---- optimize ----\n";
+          cout << "\na1: " << (int)a1[0] << "\n";
+          cout << "a2: " << (int)a2[0] << "\n";
+          cout << "f1\tf2\tb1\tb2\n";
+          for (int c=0; c<3; c++) {
+            cout << (int)f1[c] << "\t" << (int)f2[c] << "\t" <<
+              (int)b1[c] << "\t" << (int)b2[c] << "\n";
+          }
+#endif
         }
       }
     }
@@ -910,7 +950,6 @@ int main() {
     snprintf(buffer, 100, RESULTS "new_alphas_%i.ppm", raise+1);
     save_image(buffer, width, height, 1, new_alphas[raise+1][0]);
 
-    exit(0);
     raise++;
   }
 
