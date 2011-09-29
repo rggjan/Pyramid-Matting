@@ -7,7 +7,7 @@
 
 using namespace std;
 
-#define DEBUG_PROJECTION
+//#define DEBUG_PROJECTION
 
 unsigned char*
 load_image (const char* filename, int dimx, int dimy, int num_colors) {
@@ -381,7 +381,7 @@ void projection (unsigned char F[3], unsigned char B[3], unsigned char C[3], uns
   cout << "=> new_alpha = " << new_alpha << endl;
 #endif
 
-  *alpha_pointer = (unsigned char)(alpha*255);
+  *alpha_pointer = (unsigned char)(new_alpha*255);
 
   for (int c=0; c<3; c++) {
     B[c] = new_B[c];
@@ -588,21 +588,19 @@ int main() {
       /(1-foreground_ps[0][0][0]-background_ps[0][0][0]);
   }
 
-
   projection(new_foregrounds[0][0], new_backgrounds[0][0], merged_point, &(new_alphas[0][0][0]));
 
-
-  for (int c=0; c<3; c++) {
-    cout << (int)new_foregrounds[0][0][c] << "\t" << (int)new_backgrounds[0][0][c]
-      << "\t" << (int)merged_point[c] << endl;
-  }
-  /*for (int c=0; c<3; c++) {
-    cout << (int)new_foregrounds[0][0][c] <<"\t"<<(int)new_backgrounds[0][0][c]
-      <<"\t"<<(int)merged_point[c]<<endl;
-  }
-  exit(0);*/
-
   save_image(RESULTS "new_foregrounds_0.ppm", 1, 1, 3, new_foregrounds[0][0]);
+  save_image(RESULTS "new_backgrounds_0.ppm", 1, 1, 3, new_backgrounds[0][0]);
+  save_image(RESULTS "new_alphas_0.ppm", 1, 1, 1, new_alphas[0][0]);
+  unsigned char final[3];
+  for (int c=0; c<3; c++) {
+    final[c] = foreground_ps[0][0][0]*foregrounds[0][0][c]
+      +new_foregrounds[0][0][c]*new_alphas[0][0][0]/255.
+      *(1-foreground_ps[0][0][0]-background_ps[0][0][0]);
+  }
+  save_image(RESULTS "final_0.ppm", 1, 1, 3, final);
+  exit(0);
 
   while (raise < 9) {
     cout << "first " << raise << endl;
