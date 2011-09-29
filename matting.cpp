@@ -332,7 +332,7 @@ void optimize(unsigned char* f0, unsigned char* f1, unsigned char* f2,
   //cout << "alpha 0/1/2: " << (int)a0[0] << "/" << (int)a1[0] << "/" << (int)a2[0] << "\n";
 }
 
-void projection (unsigned char F[3], unsigned char B[3], unsigned char C[3], unsigned char* alpha_pointer) {
+double projection (unsigned char F[3], unsigned char B[3], unsigned char C[3], unsigned char* alpha_pointer) {
 #ifdef DEBUG_PROJECTION
   cout << "F\tB\tC\n";
   for (int c=0; c<3; c++) {
@@ -357,13 +357,26 @@ void projection (unsigned char F[3], unsigned char B[3], unsigned char C[3], uns
 #ifdef DEBUG_PROJECTION
   cout << "=> alpha = " << alpha << endl;
 #endif
-/*
+  
+  if (alpha<0) 
+    alpha = 0;
+  if (alpha>1)
+    alpha=1;
+
+
   double CC[3];
 
   for (int c=0; c<3; c++) {
     CC[c] = C[c] - (B[c] + alpha * BF[c]);
   }
 
+  double quality = 0;
+  for (int c=0; c<3; c++) {
+    double diff = CC[c];
+    quality += diff*diff;
+  }
+
+/*
   double new_B[3];
   double new_F[3];
 
@@ -425,17 +438,13 @@ void projection (unsigned char F[3], unsigned char B[3], unsigned char C[3], uns
   cout << "=> new_alpha = " << new_alpha << endl;
 #endif
 
-  if (alpha<0) 
-    alpha = 0;
-  if (alpha>1)
-    alpha=1;
-
   *alpha_pointer = (unsigned char)(alpha*255);
 /*
   for (int c=0; c<3; c++) {
     B[c] = new_B[c];
     F[c] = new_F[c];
   }*/
+  return quality;
 }
 
 #define RESULTS "results/"
@@ -726,14 +735,55 @@ int main() {
         up2 = (1-background_ps2[0]-foreground_ps2[0]);
         up0 = (up1+up2)/2;
 
-        for (int c=0; c<3; c++) {
-          f1[c]=foreground1[c]*foreground_ps1[0]+(1-foreground_ps1[0])*f0[c];
-          b1[c]=background1[c]*background_ps1[0]+(1-background_ps1[0])*b0[c];
-          f2[c]=foreground2[c]*foreground_ps2[0]+(1-foreground_ps2[0])*f0[c];
-          b2[c]=background2[c]*background_ps2[0]+(1-background_ps2[0])*b0[c];
+        unsigned char best_fg1[3];
+        unsigned char best_bg1[3];
+        unsigned char best_fg2[3];
+        unsigned char best_bg2[3];
+        unsigned char best_a1;
+        unsigned char best_a2;
+        for (int i=0; i<10; i++) {
+          double best_1 = -1;
+          double best_2 = -1;
+          for (int c=0; c<3; c++) {
+            
+            f1[c]=foreground1[c]*foreground_ps1[0]+
+              (1-foreground_ps1[0])*(f0[c]-3 +((f0[c]<253&&f0[c]>2)?rand()%7:3));
+            b1[c]=background1[c]*background_ps1[0]+
+              (1-background_ps1[0])*(b0[c]-3 +((b0[c]<253&&b0[c]>2)?rand()%7:3));
+            f2[c]=foreground2[c]*foreground_ps2[0]
+              +(1-foreground_ps2[0])*(f0[c]-3 +((f0[c]<253&&f0[c]>2)?rand()%7:3));
+            b2[c]=background2[c]*background_ps2[0]
+              +(1-background_ps2[0])*(b0[c]-3 +((b0[c]<253&&b0[c]>2)?rand()%7:3));
+
+          }
+          double score1 = projection(f1, b1, original1, a1);
+          if (score1 < best_1 || best_1 == -1) {
+            best_1 = score1;
+            best_a1 = a1[0];
+            for (int c=0; c<3; c++) {
+              best_fg1[c] = f1[c];
+              best_bg1[c] = b1[c];
+            }
+          }
+          double score2 = projection(f2, b2, original2, a2);
+          if (score2 < best_2 || best_2 == -1) {
+            best_2 = score2;
+            best_a2 = a2[0];
+            for (int c=0; c<3; c++) {
+              best_fg2[c] = f2[c];
+              best_bg2[c] = b2[c];
+            }
+          }
         }
-        projection(f1, b1, original1, a1);
-        projection(f2, b2, original2, a2);
+
+        a1[0] = best_a1;
+        a2[0] = best_a2;
+        for (int c=0; c<3; c++) {
+          f1[c] = best_fg1[c];
+          f2[c] = best_fg2[c];
+          b1[c] = best_bg1[c];
+          b2[c] = best_bg2[c];
+        }
 
 #ifdef DEBUG_GET_VALUES
         cout << "\na1: " << (int)a1[0] << "\n";
@@ -852,22 +902,55 @@ int main() {
         up1 = (1-background_ps1[0]-foreground_ps1[0]);
         up2 = (1-background_ps2[0]-foreground_ps2[0]);
         up0 = (up1+up2)/2;
-        for (int c=0; c<3; c++) {
-          f1[c]=foreground1[c]*foreground_ps1[0]+(1-foreground_ps1[0])*f0[c];
-          b1[c]=background1[c]*background_ps1[0]+(1-background_ps1[0])*b0[c];
-          f2[c]=foreground2[c]*foreground_ps2[0]+(1-foreground_ps2[0])*f0[c];
-          b2[c]=background2[c]*background_ps2[0]+(1-background_ps2[0])*b0[c];
-        }
-        if (x == 130 && y == 100 && raise == 8) {
+        
+        unsigned char best_fg1[3];
+        unsigned char best_bg1[3];
+        unsigned char best_fg2[3];
+        unsigned char best_bg2[3];
+        unsigned char best_a1;
+        unsigned char best_a2;
+        for (int i=0; i<10; i++) {
+          double best_1 = -1;
+          double best_2 = -1;
           for (int c=0; c<3; c++) {
-            cout << (int)original1[c] << endl;
+            f1[c]=foreground1[c]*foreground_ps1[0]+
+              (1-foreground_ps1[0])*(f0[c]-3 +((f0[c]<253&&f0[c]>2)?rand()%7:3));
+            b1[c]=background1[c]*background_ps1[0]+
+              (1-background_ps1[0])*(b0[c]-3 +((b0[c]<253&&b0[c]>2)?rand()%7:3));
+            f2[c]=foreground2[c]*foreground_ps2[0]
+              +(1-foreground_ps2[0])*(f0[c]-3 +((f0[c]<253&&f0[c]>2)?rand()%7:3));
+            b2[c]=background2[c]*background_ps2[0]
+              +(1-background_ps2[0])*(b0[c]-3 +((b0[c]<253&&b0[c]>2)?rand()%7:3));
+
+          }
+          double score1 = projection(f1, b1, original1, a1);
+          if (score1 < best_1 || best_1 == -1) {
+            best_1 = score1;
+            best_a1 = a1[0];
+            for (int c=0; c<3; c++) {
+              best_fg1[c] = f1[c];
+              best_bg1[c] = b1[c];
+            }
+          }
+          double score2 = projection(f2, b2, original2, a2);
+          if (score2 < best_2 || best_2 == -1) {
+            best_2 = score2;
+            best_a2 = a2[0];
+            for (int c=0; c<3; c++) {
+              best_fg2[c] = f2[c];
+              best_bg2[c] = b2[c];
+            }
           }
         }
-        projection(f1, b1, original1, a1);
-        if (x == 130 && y == 100 && raise == 8) {
-          cout << (int)a1[0] << endl;
+
+        a1[0] = best_a1;
+        a2[0] = best_a2;
+        for (int c=0; c<3; c++) {
+          f1[c] = best_fg1[c];
+          f2[c] = best_fg2[c];
+          b1[c] = best_bg1[c];
+          b2[c] = best_bg2[c];
         }
-        projection(f2, b2, original2, a2);
       }
     }
 
