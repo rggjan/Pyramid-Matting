@@ -642,6 +642,9 @@ int main() {
     snprintf(buffer, 100, RESULTS "new_foregrounds_%i_h.ppm", raise);
     save_image(buffer, width, height, 3, new_foregrounds[raise][1]);
     
+    snprintf(buffer, 100, RESULTS "new_backgrounds_%i_h.ppm", raise);
+    save_image(buffer, width, height, 3, new_backgrounds[raise][1]);
+    
     snprintf(buffer, 100, RESULTS "new_alphas_%i_h.ppm", raise);
     save_image(buffer, width, height, 1, new_alphas[raise][1]);
     
@@ -749,6 +752,9 @@ int main() {
 
     snprintf(buffer, 100, RESULTS "new_foregrounds_%i.ppm", raise+1);
     save_image(buffer, width, height, 3, new_foregrounds[raise+1][0]);
+    
+    snprintf(buffer, 100, RESULTS "new_backgrounds_%i.ppm", raise+1);
+    save_image(buffer, width, height, 3, new_backgrounds[raise+1][0]);
     
     snprintf(buffer, 100, RESULTS "new_alphas_%i.ppm", raise+1);
     save_image(buffer, width, height, 1, new_alphas[raise+1][0]);
