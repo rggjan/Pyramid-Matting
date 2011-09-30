@@ -546,6 +546,7 @@ int main() {
     cout << "============= raise: " << raise << "=============" << endl;
     width *= 2;
     height *= 2;
+    raise++;
 
     for (int b=0; b<2; b++) {
       new_colors[raise][b] = new double[width*height*3];
@@ -564,14 +565,14 @@ int main() {
                   && x/2 + bxdiff < width/2 && y + bydiff < height/2))
               continue;
 
-            fbt[0] = &(new_colors[raise][1][((y/2+bydiff)*width/2+(x/2+bxdiff))*3]);
+            fbt[0] = &(new_colors[raise-1][1][((y/2+bydiff)*width/2+(x/2+bxdiff))*3]);
             for (int fxdiff=-3; fxdiff<=3; fxdiff++) {
               for (int fydiff=-3; fydiff<=3; fydiff++) {
                 if (!(x/2 + fxdiff >= 0 && y + fydiff >= 0
                       && x/2 + fxdiff < width/2 && y + fydiff < height/2))
                   continue;
 
-                fbt[1] = &(new_colors[raise][0]
+                fbt[1] = &(new_colors[raise-1][0]
                     [((y/2+fydiff)*width/2+(x/2+fxdiff))*3]);
 
                 for (int nx=0; nx<2; nx++) {
@@ -611,16 +612,16 @@ int main() {
           for (int ny=0; ny<2; ny++) {
             for (int b=0; b<2; b++) {
               for (int c=0; c<3; c++) {
-                double cur_ps = ps[raise+1][b][(y+ny)*width+x+nx];
-                new_colors[raise+1][b][((y+ny)*width+x+nx)*3+c] =
+                double cur_ps = ps[raise][b][(y+ny)*width+x+nx];
+                new_colors[raise][b][((y+ny)*width+x+nx)*3+c] =
                   ((best_fbs[nx][ny][b][c]
-                  + fbs[raise][b][(y/2*width/2+x/2)*3+c])/2)*(1-cur_ps)
+                  + fbs[raise-1][b][(y/2*width/2+x/2)*3+c])/2)*(1-cur_ps)
                   + fbs[raise][b][((y+ny)*width+x+nx)]*cur_ps;
               }
-              projection(&(new_colors[raise+1][0][((y+ny)*width+x+nx)*3]),
-                  &(new_colors[raise+1][1][((y+ny)*width+x+nx)*3]),
-                  &(originals[raise+1][((y*ny)*width+x+nx)*3]),
-                  &(new_alphas[raise+1][((y*ny)*width+x+nx)*3]));
+              projection(&(new_colors[raise][0][((y+ny)*width+x+nx)*3]),
+                  &(new_colors[raise][1][((y+ny)*width+x+nx)*3]),
+                  &(originals[raise][((y*ny)*width+x+nx)*3]),
+                  &(new_alphas[raise][((y*ny)*width+x+nx)*3]));
             }
           }
         }
@@ -628,29 +629,29 @@ int main() {
     }
 
     static char buffer[100];
-    snprintf(buffer, 100, RESULTS "final_%i_h.ppm", raise);
+    snprintf(buffer, 100, RESULTS "final_%i.ppm", raise);
     double *tmp = new double[width*height*3];
     for (int y=0; y<height; y++) {
       for (int x=0; x<width; x++) {
         for (int c=0; c<3; c++) {
-          tmp[(y*width+x)*3+c] = ps[raise+1][0][y*width+1]
-            *fbs[raise+1][0][(y*width+1)*3+c]
-            +new_colors[raise+1][0][(y*width+x)*3+c]*new_alphas[raise+1][(y*width+x)]
-            *(1-ps[raise+1][0][y*width+x]-ps[raise+1][1][y*width+x]);
+          tmp[(y*width+x)*3+c] = ps[raise][0][y*width+1]
+            *fbs[raise][0][(y*width+1)*3+c]
+            +new_colors[raise][0][(y*width+x)*3+c]*new_alphas[raise][(y*width+x)]
+            *(1-ps[raise][0][y*width+x]-ps[raise][1][y*width+x]);
         }
       }
     }
     save_image(buffer, width, height, 3, tmp);
     delete[] tmp;
 
-    snprintf(buffer, 100, RESULTS "new_foregrounds_%i_h.ppm", raise);
-    save_image(buffer, width, height, 3, new_colors[raise+1][0]);
+    snprintf(buffer, 100, RESULTS "new_foregrounds_%i.ppm", raise);
+    save_image(buffer, width, height, 3, new_colors[raise][0]);
     
-    snprintf(buffer, 100, RESULTS "new_backgrounds_%i_h.ppm", raise);
-    save_image(buffer, width, height, 3, new_colors[raise+1][1]);
+    snprintf(buffer, 100, RESULTS "new_backgrounds_%i.ppm", raise);
+    save_image(buffer, width, height, 3, new_colors[raise][1]);
     
-    snprintf(buffer, 100, RESULTS "new_alphas_%i_h.ppm", raise);
-    save_image(buffer, width, height, 1, new_alphas[raise+1]);
+    snprintf(buffer, 100, RESULTS "new_alphas_%i.ppm", raise);
+    save_image(buffer, width, height, 1, new_alphas[raise]);
     
   }
 /*
