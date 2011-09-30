@@ -738,19 +738,18 @@ int main() {
         unsigned char best_a2;
         double best_1 = -1;
         double best_2 = -1;
-        int count = 0;
-        for (int bxdiff=0; bxdiff<=0; bxdiff++) {
-          for (int bydiff=0; bydiff<=0; bydiff++) {
+        int count;
+        for (int bxdiff=-1; bxdiff<=1; bxdiff++) {
+          for (int bydiff=-1; bydiff<=1; bydiff++) {
             if (!(x/2+bxdiff>=0 && y+bydiff>=0 && x/2+bxdiff < width/2 && y+bydiff < height))
               continue;
 
             unsigned char* bgt = &(new_backgrounds[raise][0][((y+bydiff)*width/2+(x/2+bxdiff))*3]);
-            for (int fxdiff=0; fxdiff<=0; fxdiff++) {
-              for (int fydiff=0; fydiff<=0; fydiff++) {
+            for (int fxdiff=-1; fxdiff<=1; fxdiff++) {
+              for (int fydiff=-1; fydiff<=1; fydiff++) {
                 if (!(x/2+fxdiff>=0 && y+fydiff>=0 && x/2+fxdiff < width/2 && y+fydiff < height))
                   continue;
 
-                count++;
                 unsigned char* fgt = &(new_foregrounds[raise][0][((y+fydiff)*width/2+(x/2+fxdiff))*3]);
                 for (int c=0; c<3; c++) {
                   f1[c]=foreground1[c]*foreground_ps1[0]+
