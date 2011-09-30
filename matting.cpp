@@ -353,14 +353,7 @@ void optimize(unsigned char* f0, unsigned char* f1, unsigned char* f2,
   //cout << "alpha 0/1/2: " << (int)a0[0] << "/" << (int)a1[0] << "/" << (int)a2[0] << "\n";
 }
 
-double projection (unsigned char F[3], unsigned char B[3], unsigned char C[3], unsigned char* alpha_pointer) {
-#ifdef DEBUG_PROJECTION
-  cout << "F\tB\tC\n";
-  for (int c=0; c<3; c++) {
-    cout << (int)F[c] << "\t" << (int)B[c] << "\t" << (int)C[c] << "\n";
-  }
-#endif
-
+double projection (double F[3], double B[3], double C[3], double* alpha_pointer) {
   double BF[3];
   double BC[3];
   double dot_BF_BF = 0;
@@ -375,18 +368,13 @@ double projection (unsigned char F[3], unsigned char B[3], unsigned char C[3], u
 
   double alpha = dot_BF_BC/dot_BF_BF;
 
-#ifdef DEBUG_PROJECTION
-  cout << "=> alpha = " << alpha << endl;
-#endif
-  
   if (alpha<0) 
     alpha = 0;
+
   if (alpha>1)
     alpha=1;
 
-
   double CC[3];
-
   for (int c=0; c<3; c++) {
     CC[c] = C[c] - (B[c] + alpha * BF[c]);
   }
@@ -397,74 +385,7 @@ double projection (unsigned char F[3], unsigned char B[3], unsigned char C[3], u
     quality += diff*diff;
   }
 
-/*
-  double new_B[3];
-  double new_F[3];
-
-  for (int c=0; c<3; c++) {
-    new_B[c] = B[c];
-    new_F[c] = F[c];
-    new_B[c] = B[c] + CC[c];
-    new_F[c] = F[c] + CC[c];
-  }
-
-#ifdef DEBUG_PROJECTION
-  cout << "\nF\t=>\tnew_F\n";
-  for (int c=0; c<3; c++) {
-    cout << (int)F[c] << "\t" << "" << "\t" << new_F[c] << "\n";
-  }
-  cout << "\nB\t=>\tnew_B\n";
-  for (int c=0; c<3; c++) {
-    cout << (int)B[c] << "\t" << "" << "\t" << new_B[c] << "\n";
-  }
-#endif*/
-/*
-  for (int c=0; c<3; c++) {
-    if (new_B[c] < 0) {
-      double factor = (0-C[c])/(new_B[c]-C[c]);
-      for (int new_c=0; new_c<3; new_c++) {
-        new_B[new_c] = C[new_c]+factor*(new_B[new_c]-C[new_c]);
-      }
-    }
-    if (new_B[c] > 255) {
-      double factor = (255-C[c])/(new_B[c]-C[c]);
-      for (int new_c=0; new_c<3; new_c++) {
-        new_B[new_c] = C[new_c]+factor*(new_B[new_c]-C[new_c]);
-      }
-    }
-    if (new_F[c] < 0) {
-      double factor = (0-C[c])/(new_F[c]-C[c]);
-      for (int new_c=0; new_c<3; new_c++) {
-        new_F[new_c] = C[new_c]+factor*(new_F[new_c]-C[new_c]);
-      }
-    }
-    if (new_F[c] > 255) {
-      double factor = (255-C[c])/(new_F[c]-C[c]);
-      for (int new_c=0; new_c<3; new_c++) {
-        new_F[new_c] = C[new_c]+factor*(new_F[new_c]-C[new_c]);
-      }
-    }
-  }
-*/
-#ifdef DEBUG_PROJECTION
-  cout << "\nNormalize:\n";
-  cout << "new_F\t\tnew_B\n";
-  for (int c=0; c<3; c++) {
-    cout << new_F[c] << "\t\t" << new_B[c] << "\n";
-  }
-#endif
-  
-//  double new_alpha = (C[0] - new_B[0])/(new_F[0] - new_B[0]);
-#ifdef DEBUG_PROJECTION
-  cout << "=> new_alpha = " << new_alpha << endl;
-#endif
-
-  *alpha_pointer = (unsigned char)(alpha*255);
-/*
-  for (int c=0; c<3; c++) {
-    B[c] = new_B[c];
-    F[c] = new_F[c];
-  }*/
+  *alpha_pointer = alpha;
   return quality;
 }
 
@@ -495,51 +416,37 @@ int main() {
   double* originals[raise+1];
 
   double* new_alphas[raise+1];
-  double* foregrounds[raise+1];
-  double* new_foregrounds[raise+1];
-  double* foreground_ps[raise+1];
-  double* backgrounds[raise+1];
-  double* new_backgrounds[raise+1];
-  double* background_ps[raise+1];
+  double* fbs[raise+1][2];
+  double* ps[raise+1][2];
+  double* new_colors[raise+1][2];
 
   originals[9] = load_image("test.ppm", width, height, 3);
-  foregrounds[9] = new double[width*height*3]();
-  foreground_ps[9] = new double[width*height]();
-  backgrounds[9] = new double[width*height*3]();
-  background_ps[9] = new double[width*height]();
+  for (int b=0; b<2; b++) {
+    fbs[9][b] = new double[width*height*3]();
+    ps[9][b] = new double[width*height]();
+  }
 
   for (int y=0; y<height; y++) {
     for (int x=0; x<width; x++) {
       if (mask[width*y+x] == 1) {
-        foreground_ps[9][width*y+x] = 1;
-        background_ps[9][width*y+x] = 0;
+        ps[9][0][width*y+x] = 1;
         for (int c=0; c<3; c++) {
-          backgrounds[9][(width*y+x)*3+c] = 0;
-          foregrounds[9][(width*y+x)*3+c] =
+          fbs[9][0][(width*y+x)*3+c] =
             originals[9][(width*y+x)*3+c];
         }
       } else if (mask[width*y+x] == 0) {
-        foreground_ps[9][width*y+x] = 0;
-        background_ps[9][width*y+x] = 1;
+        ps[9][1][width*y+x] = 1;
         for (int c=0; c<3; c++) {
-          foregrounds[9][(width*y+x)*3+c] = 0;
-          backgrounds[9][(width*y+x)*3+c] =
+          fbs[9][1][(width*y+x)*3+c] =
             originals[9][(width*y+x)*3+c];
-        }
-      } else {
-        foreground_ps[9][width*y+x] = 0;
-        background_ps[9][width*y+x] = 0;
-        for (int c=0; c<3; c++) {
-          foregrounds[9][(width*y+x)*3+c] = 0;
-          backgrounds[9][(width*y+x)*3+c] = 0;
         }
       }
     }
   }
 
   save_image(RESULTS "originals_9.ppm", width, height, 3, originals[9]);
-  save_image(RESULTS "foregrounds_9.ppm", width, height, 3, foregrounds[9]);
-  save_image(RESULTS "backgrounds_9.ppm", width, height, 3, backgrounds[9]);
+  save_image(RESULTS "foregrounds_9.ppm", width, height, 3, fbs[9][0]);
+  save_image(RESULTS "backgrounds_9.ppm", width, height, 3, fbs[9][1]);
 
   while (raise > 0) {
     raise--;
@@ -549,30 +456,36 @@ int main() {
     width = width/2;
 
     originals[raise] = new double[width*height*3]();
-    foregrounds[raise] = new double[width*height*3]();
-    foreground_ps[raise] = new double[width*height]();
-    backgrounds[raise] = new double[width*height*3]();
-    background_ps[raise] = new double[width*height]();
+    for (int b=0; b<2; b++) {
+      fbs[raise][b] = new double[width*height*3]();
+      ps[raise][b] =  new double[width*height]();
+    }
   
     for (int y=0; y<height; y++) {
       for (int x=0; x<width; x++) {
         for (int xdiff = 0; xdiff <= 1; xdiff++) {
           for (int ydiff = 0; ydiff <= 1; ydiff++) {
-            foreground_ps[raise][y*width+x] +=
-              foreground_ps[raise+1][(2*y+ydiff)*(2*width)+2*x+xdiff]/4;
-            background_ps[raise][y*width+x] +=
-              background_ps[raise+1][(2*y+ydiff)*(2*width)+2*x+xdiff]/4;
+            for (int b=0; b<2; b++) {
+              ps[raise][b][y*width+x] +=
+                ps[raise+1][b][(2*y+ydiff)*(2*width)+2*x+xdiff]/4;
+            }
+          }
+        }
 
+        for (int xdiff = 0; xdiff <= 1; xdiff++) {
+          for (int ydiff = 0; ydiff <= 1; ydiff++) {
             for (int c=0; c<3; c++) {
               originals[raise][(y*width+x)*3+c] +=
                 originals[raise+1][((2*y+ydiff)*(2*width)+2*x+xdiff)*3+c]/4;
-              foregrounds[raise][(y*width+x)*3+c] +=
-                foregrounds[raise+1][((2*y+ydiff)*(2*width)+2*x+xdiff)*3+c]*
-                foreground_ps[raise+1][(2*y+ydiff)*(2*width)+2*x+xdiff]/4;
-              backgrounds[raise][(y*width+x)*3+c] +=
-                backgrounds[raise+1][((2*y+ydiff)*(2*width)+2*x+xdiff)*3+c]*
-                background_ps[raise+1][(2*y+ydiff)*(2*width)+2*x+xdiff]/4;
 
+              for (int b=0; b<2; b++) {
+                double new_ps = ps[raise][b][y*width+x];
+                if (new_ps > 0)
+                  fbs[raise][b][(y*width+x)*3+c] +=
+                    fbs[raise+1][b][((2*y+ydiff)*(2*width)+2*x+xdiff)*3+c]
+                    *ps[raise+1][b][(2*y+ydiff)*(2*width)+2*x+xdiff]
+                    /new_ps/4;
+              }
             }
           }
         }
@@ -584,211 +497,146 @@ int main() {
     save_image(buffer, width, height, 3, originals[raise]);
     
     snprintf(buffer, 100, RESULTS "foregrounds_%i.ppm", raise);
-    save_image(buffer, width, height, 3, foregrounds[raise]);
+    save_image(buffer, width, height, 3, fbs[raise][0]);
     
     snprintf(buffer, 100, RESULTS "backgrounds_%i.ppm", raise);
-    save_image(buffer, width, height, 3, backgrounds[raise]);
+    save_image(buffer, width, height, 3, fbs[raise][1]);
   }
-  /*
+  
 
   // Upscaling
   raise = 0;
   width = 1;
   height = 1;
 
-  new_foregrounds[0][0] = new unsigned char[3];
-  new_backgrounds[0][0] = new unsigned char[3];
-  new_alphas[0][0] = new unsigned char[1];
-
-  for (int c=0; c<3; c++) {
-    new_foregrounds[0][0][c] = foregrounds[0][0][c];
-    new_backgrounds[0][0][c] = backgrounds[0][0][c];
+  new_alphas[0] = new double[1];
+  for (int b=0; b<2; b++) {
+    new_colors[0][b] = new double[3];
+    for (int c=0; c<3; c++) {
+      new_colors[0][b][c] = fbs[0][b][c];
+    }
   }
 
   // Calculate alpha
-  unsigned char merged_point[3];
+  double merged_point[3];
   for (int c=0; c<3; c++) {
-    merged_point[c] = (originals[0][0][c]
-      -foreground_ps[0][0][0]*foregrounds[0][0][c]
-      -background_ps[0][0][0]*backgrounds[0][0][c])
-      /(1-foreground_ps[0][0][0]-background_ps[0][0][0]);
+    merged_point[c] = (originals[0][c]
+      -ps[0][0][0]*fbs[0][0][c]
+      -ps[0][1][0]*fbs[0][1][c])
+      /(1-ps[0][0][0]-ps[0][1][0]);
   }
 
-  projection(new_foregrounds[0][0], new_backgrounds[0][0], merged_point, &(new_alphas[0][0][0]));
+  projection(new_colors[0][0], new_colors[0][1],
+      merged_point, &(new_alphas[0][0]));
 
-  save_image(RESULTS "new_foregrounds_0.ppm", 1, 1, 3, new_foregrounds[0][0]);
-  save_image(RESULTS "new_backgrounds_0.ppm", 1, 1, 3, new_backgrounds[0][0]);
-  save_image(RESULTS "new_alphas_0.ppm", 1, 1, 1, new_alphas[0][0]);
-  unsigned char final[3];
+  save_image(RESULTS "new_foregrounds_0.ppm", 1, 1, 3, new_colors[0][0]);
+  save_image(RESULTS "new_backgrounds_0.ppm", 1, 1, 3, new_colors[0][1]);
+  save_image(RESULTS "new_alphas_0.ppm", 1, 1, 1, new_alphas[0]);
+
+
+  double final[3];
   for (int c=0; c<3; c++) {
-    final[c] = foreground_ps[0][0][0]*foregrounds[0][0][c]
-      +new_foregrounds[0][0][c]*new_alphas[0][0][0]/255.
-      *(1-foreground_ps[0][0][0]-background_ps[0][0][0]);
+    final[c] = ps[0][0][0]*fbs[0][0][c]
+      +new_colors[0][0][c]*new_alphas[0][0]
+      *(1-ps[0][0][0]-ps[0][1][0]);
   }
   save_image(RESULTS "final_0.ppm", 1, 1, 3, final);
 
   while (raise < 9) {
-    cout << "============= size: " << pow(2, raise) << "=============" << endl;
+    cout << "============= raise: " << raise << "=============" << endl;
     width *= 2;
-    new_foregrounds[raise][1] = new unsigned char[width*height*3];
-    new_backgrounds[raise][1] = new unsigned char[width*height*3];
-    new_alphas[raise][1] = new unsigned char[width*height];
+    height *= 2;
 
-    for (int y=0; y<height; y++) {
+    for (int b=0; b<2; b++) {
+      new_colors[raise][b] = new double[width*height*3];
+    }
+    new_alphas[raise] = new double[width*height];
+
+    for (int y=0; y<height; y+=2) {
       for (int x=0; x<width; x+=2) {
-        unsigned char* f0 = &(new_foregrounds[raise][0][(y*width/2+x/2)*3]);
-        unsigned char* b0 = &(new_backgrounds[raise][0][(y*width/2+x/2)*3]);
-        unsigned char* a0 = &(new_alphas[raise][0][(y*width/2+x/2)]);
-
-        unsigned char* f1 = &(new_foregrounds[raise][1][(y*width+x)*3]);
-        unsigned char* f2 = &(new_foregrounds[raise][1][(y*width+x+1)*3]);
+        double best_fbs[2][2][2][3];
+        double best_score[2][2] = {{-1, -1}, {-1, -1}};
         
-        unsigned char* b1 = &(new_backgrounds[raise][1][(y*width+x)*3]);
-        unsigned char* b2 = &(new_backgrounds[raise][1][(y*width+x+1)*3]);
-        
-        unsigned char* a1 = &(new_alphas[raise][1][y*width+x]);
-        unsigned char* a2 = &(new_alphas[raise][1][y*width+x+1]);
-
-        // Subtract known foreground / background 
-        unsigned char* original1 = &(originals[raise][1][(y*width+x)*3]);
-        unsigned char* original2 = &(originals[raise][1][(y*width+x+1)*3]);
-
-        unsigned char* foreground1 = &(foregrounds[raise][1][(y*width+x)*3]);
-        unsigned char* foreground2 = &(foregrounds[raise][1][(y*width+x+1)*3]);
-        
-        unsigned char* background1 = &(backgrounds[raise][1][(y*width+x)*3]);
-        unsigned char* background2 = &(backgrounds[raise][1][(y*width+x+1)*3]);
-
-        double* foreground_ps1 = &(foreground_ps[raise][1][(y*width+x)]);
-        double* foreground_ps2 = &(foreground_ps[raise][1][(y*width+x+1)]);
-        
-        double* background_ps1 = &(background_ps[raise][1][(y*width+x)]);
-        double* background_ps2 = &(background_ps[raise][1][(y*width+x+1)]);
-
-#ifdef DEBUG_GET_VALUES
-        cout << "a0:\t" << (int)a0[0] << endl;
-        cout << "fg_ps1:\t" << foreground_ps1[0]
-          << "\nfg_ps2:\t" << foreground_ps2[0]
-          << "\nbg_ps1:\t" << background_ps1[0]
-          << "\nbg_ps2:\t" << background_ps2[0] << "\n";
-        cout << "f0\tb0\torig1\torig2\tbg1\tbg2\tfg1\tfg2\t\n";
-        for (int c=0; c<3; c++) {
-          cout << (int)f0[c] << "\t" << (int)b0[c] << "\t"
-            << (int)original1[c] << "\t" << (int)original2[c] << "\t"
-            << (int)background1[c] << "\t" << (int)background2[c] << "\t"
-            << (int)foreground1[c] << "\t" << (int)foreground2[c] << "\n";
-        }
-#endif
-
-        unsigned char c1[3];
-        unsigned char c2[3];
-
-        for (int c=0; c<3; c++) {
-          c1[c] = (original1[c] - foreground_ps1[0]*foreground1[c]
-              -background_ps1[0]*background1[c])
-            /(1-foreground_ps1[0]-background_ps1[0]);
-          c2[c] = (original2[c] - foreground_ps2[0]*foreground2[c]
-              -background_ps2[0]*background2[c])
-            /(1-foreground_ps2[0]-background_ps2[0]);
-        }
-
-#ifdef DEBUG_GET_VALUES
-        cout << "\nc1\tc2\n";
-        for (int c=0; c<3; c++) {
-          cout << (int)c1[c] << "\t" << (int)c2[c] << "\n";
-        }
-#endif
-        unsigned char best_fg1[3];
-        unsigned char best_bg1[3];
-        unsigned char best_fg2[3];
-        unsigned char best_bg2[3];
-        unsigned char best_a1;
-        unsigned char best_a2;
-        double best_1 = -1;
-        double best_2 = -1;
-        int count;
+        double* fbt[2];
         for (int bxdiff=-3; bxdiff<=3; bxdiff++) {
           for (int bydiff=-3; bydiff<=3; bydiff++) {
-            if (!(x/2+bxdiff>=0 && y+bydiff>=0 && x/2+bxdiff < width/2 && y+bydiff < height))
+            if (!(x/2 + bxdiff >= 0 && y/2 + bydiff >= 0
+                  && x/2 + bxdiff < width/2 && y + bydiff < height/2))
               continue;
 
-            unsigned char* bgt = &(new_backgrounds[raise][0][((y+bydiff)*width/2+(x/2+bxdiff))*3]);
+            fbt[0] = &(new_colors[raise][1][((y/2+bydiff)*width/2+(x/2+bxdiff))*3]);
             for (int fxdiff=-3; fxdiff<=3; fxdiff++) {
               for (int fydiff=-3; fydiff<=3; fydiff++) {
-                if (!(x/2+fxdiff>=0 && y+fydiff>=0 && x/2+fxdiff < width/2 && y+fydiff < height))
+                if (!(x/2 + fxdiff >= 0 && y + fydiff >= 0
+                      && x/2 + fxdiff < width/2 && y + fydiff < height/2))
                   continue;
 
-                unsigned char* fgt = &(new_foregrounds[raise][0][((y+fydiff)*width/2+(x/2+fxdiff))*3]);
-                for (int c=0; c<3; c++) {
-                  f1[c]=foreground1[c]*foreground_ps1[0]+
-                    (1-foreground_ps1[0])*(fgt[c]);
-                  b1[c]=background1[c]*background_ps1[0]+
-                    (1-background_ps1[0])*(bgt[c]);
-                  f2[c]=foreground2[c]*foreground_ps2[0]
-                    +(1-foreground_ps2[0])*(fgt[c]);
-                  b2[c]=background2[c]*background_ps2[0]
-                    +(1-background_ps2[0])*(bgt[c]);
+                fbt[1] = &(new_colors[raise][0]
+                    [((y/2+fydiff)*width/2+(x/2+fxdiff))*3]);
 
-                }
-                double score1 = projection(f1, b1, original1, a1);
-                if (score1 < best_1 || best_1 == -1) {
-                  best_1 = score1;
-                  best_a1 = a1[0];
-                  for (int c=0; c<3; c++) {
-                    best_fg1[c] = fgt[c];
-                    best_bg1[c] = bgt[c];
-                  }
-                }
-                double score2 = projection(f2, b2, original2, a2);
-                if (score2 < best_2 || best_2 == -1) {
-                  best_2 = score2;
-                  best_a2 = a2[0];
-                  for (int c=0; c<3; c++) {
-                    best_fg2[c] = fgt[c];
-                    best_bg2[c] = bgt[c];
+                for (int nx=0; nx<2; nx++) {
+                  for (int ny=0; ny<2; ny++) {
+                    double fbs_merged[2][3];
+                    double proj_a;
+
+                    for (int c=0; c<3; c++) {
+                      for (int b=0; b<2; b++){
+                        // TODO fix verhältnis?
+                        double cur_ps = ps[raise][b][(y*ny)*width+x+nx];
+                        fbs_merged[b][c] = fbs[raise][b][((y+ny)*width+x+nx)*3+c]
+                          * cur_ps + (1 - cur_ps)*fbt[b][c];
+                      }
+                    }
+
+                    double score = projection(fbs_merged[0], fbs_merged[1],
+                        &(originals[raise][((y+ny)*width+x+nx)*3]), &proj_a);
+
+                    if (score < best_score[nx][ny]
+                        || best_score[nx][ny] == -1) {
+                      best_score[nx][ny] = score;
+                      for (int c=0; c<3; c++) {
+                        for (int b=0; b<2; b++) {
+                          best_fbs[nx][ny][b][c] = fbt[b][c];
+                        }
+                      }
+                    }
                   }
                 }
               }
             }
           }
         }
-        for (int c=0; c<3; c++) {
-          f1[c] = (best_fg1[c]+f0[c])/2;
-          f2[c] = (best_fg2[c]+f0[c])/2;
-          b1[c] = (best_bg1[c]+b0[c])/2;
-          b2[c] = (best_bg2[c]+b0[c])/2;
-        }
-        for (int c=0; c<3; c++) {
-          f1[c]=foreground1[c]*foreground_ps1[0]+
-            (1-foreground_ps1[0])*(f1[c]);
-          b1[c]=background1[c]*background_ps1[0]+
-            (1-background_ps1[0])*(b1[c]);
-          f2[c]=foreground2[c]*foreground_ps2[0]
-            +(1-foreground_ps2[0])*(f2[c]);
-          b2[c]=background2[c]*background_ps2[0]
-            +(1-background_ps2[0])*(b2[c]);
 
+        for (int nx=0; nx<2; nx++) {
+          for (int ny=0; ny<2; ny++) {
+            for (int b=0; b<2; b++) {
+              for (int c=0; c<3; c++) {
+                double cur_ps = ps[raise+1][b][(y+ny)*width+x+nx];
+                new_colors[raise+1][b][((y+ny)*width+x+nx)*3+c] =
+                  ((best_fbs[nx][ny][b][c]
+                  + fbs[raise][b][(y/2*width/2+x/2)*3+c])/2)*(1-cur_ps)
+                  + fbs[raise][b][((y+ny)*width+x+nx)]*cur_ps;
+              }
+              projection(&(new_colors[raise+1][0][((y+ny)*width+x+nx)*3]),
+                  &(new_colors[raise+1][1][((y+ny)*width+x+nx)*3]),
+                  &(originals[raise+1][((y*ny)*width+x+nx)*3]),
+                  &(new_alphas[raise+1][((y*ny)*width+x+nx)*3]));
+            }
+          }
         }
-        projection(f1, b1, original1, a1);
-        projection(f2, b2, original2, a2);
       }
     }
 
     static char buffer[100];
     snprintf(buffer, 100, RESULTS "final_%i_h.ppm", raise);
-    unsigned char *tmp = new unsigned char[width*height*3];
+    double *tmp = new double[width*height*3];
     for (int y=0; y<height; y++) {
       for (int x=0; x<width; x++) {
         for (int c=0; c<3; c++) {
-          tmp[(y*width+x)*3+c] =
-            foregrounds[raise][1][(y*width+x)*3+c]*
-            foreground_ps[raise][1][(y*width+x)]+
-
-            (new_foregrounds[raise][1][(y*width+x)*3+c]
-            *new_alphas[raise][1][y*width+x]/255.)*
-
-            (1-foreground_ps[raise][1][(y*width+x)]-
-            background_ps[raise][1][(y*width+x)]);
+          tmp[(y*width+x)*3+c] = ps[raise+1][0][y*width+1]
+            *fbs[raise+1][0][(y*width+1)*3+c]
+            +new_colors[raise+1][0][(y*width+x)*3+c]*new_alphas[raise+1][(y*width+x)]
+            *(1-ps[raise+1][0][y*width+x]-ps[raise+1][1][y*width+x]);
         }
       }
     }
@@ -796,194 +644,16 @@ int main() {
     delete[] tmp;
 
     snprintf(buffer, 100, RESULTS "new_foregrounds_%i_h.ppm", raise);
-    save_image(buffer, width, height, 3, new_foregrounds[raise][1]);
+    save_image(buffer, width, height, 3, new_colors[raise+1][0]);
     
     snprintf(buffer, 100, RESULTS "new_backgrounds_%i_h.ppm", raise);
-    save_image(buffer, width, height, 3, new_backgrounds[raise][1]);
+    save_image(buffer, width, height, 3, new_colors[raise+1][1]);
     
     snprintf(buffer, 100, RESULTS "new_alphas_%i_h.ppm", raise);
-    save_image(buffer, width, height, 1, new_alphas[raise][1]);
+    save_image(buffer, width, height, 1, new_alphas[raise+1]);
     
-    // Stretch height
-    cout << "============= size(h): " << pow(2, raise) << "=============" << endl;
-    height *= 2;
-    new_foregrounds[raise+1][0] = new unsigned char[width*height*3];
-    new_backgrounds[raise+1][0] = new unsigned char[width*height*3];
-    new_alphas[raise+1][0] = new unsigned char[width*height];
-
-    for (int y=0; y<height; y+=2) {
-      for (int x=0; x<width; x++) {
-        unsigned char* f0 = &(new_foregrounds[raise][1][((y/2)*width+x)*3]);
-        unsigned char* b0 = &(new_backgrounds[raise][1][((y/2)*width+x)*3]);
-        unsigned char* a0 = &(new_alphas[raise][1][((y/2)*width+x)]);
-
-        unsigned char* f1 = &(new_foregrounds[raise+1][0][(y*width+x)*3]);
-        unsigned char* f2 = &(new_foregrounds[raise+1][0][((y+1)*width+x)*3]);
-        
-        unsigned char* b1 = &(new_backgrounds[raise+1][0][(y*width+x)*3]);
-        unsigned char* b2 = &(new_backgrounds[raise+1][0][((y+1)*width+x)*3]);
-        
-        unsigned char* a1 = &(new_alphas[raise+1][0][y*width+x]);
-        unsigned char* a2 = &(new_alphas[raise+1][0][(y+1)*width+x]);
-
-        // Subtract known foreground / background 
-        unsigned char* original1 = &(originals[raise+1][0][(y*width+x)*3]);
-        unsigned char* original2 = &(originals[raise+1][0][((y+1)*width+x)*3]);
-       
-        unsigned char* foreground1 = &(foregrounds[raise+1][0][(y*width+x)*3]);
-        unsigned char* foreground2 = &(foregrounds[raise+1][0][((y+1)*width+x)*3]);
-        
-        unsigned char* background1 = &(backgrounds[raise+1][0][(y*width+x)*3]);
-        unsigned char* background2 = &(backgrounds[raise+1][0][((y+1)*width+x)*3]);
-
-        double* foreground_ps1 = &(foreground_ps[raise+1][0][(y*width+x)]);
-        double* foreground_ps2 = &(foreground_ps[raise+1][0][((y+1)*width+x)]);
-        
-        double* background_ps1 = &(background_ps[raise+1][0][(y*width+x)]);
-        double* background_ps2 = &(background_ps[raise+1][0][((y+1)*width+x)]);
-
-#ifdef DEBUG_GET_VALUES
-        cout << "a0:\t" << (int)a0[0] << endl;
-        cout << "fg_ps1:\t" << foreground_ps1[0]
-          << "\nfg_ps2:\t" << foreground_ps2[0]
-          << "\nbg_ps1:\t" << background_ps1[0]
-          << "\nbg_ps2:\t" << background_ps2[0] << "\n";
-        cout << "f0\tb0\torig1\torig2\tbg1\tbg2\tfg1\tfg2\t\n";
-        for (int c=0; c<3; c++) {
-          cout << (int)f0[c] << "\t" << (int)b0[c] << "\t"
-            << (int)original1[c] << "\t" << (int)original2[c] << "\t"
-            << (int)background1[c] << "\t" << (int)background2[c] << "\t"
-            << (int)foreground1[c] << "\t" << (int)foreground2[c] << "\n";
-        }
-#endif
-
-        unsigned char c1[3];
-        unsigned char c2[3];
-
-        for (int c=0; c<3; c++) {
-          c1[c] = (original1[c] - foreground_ps1[0]*foreground1[c]
-              -background_ps1[0]*background1[c])
-            /(1-foreground_ps1[0]-background_ps1[0]);
-          c2[c] = (original2[c] - foreground_ps2[0]*foreground2[c]
-              -background_ps2[0]*background2[c])
-            /(1-foreground_ps2[0]-background_ps2[0]);
-        }
-
-#ifdef DEBUG_GET_VALUES
-        cout << "\nc1\tc2\n";
-        for (int c=0; c<3; c++) {
-          cout << (int)c1[c] << "\t" << (int)c2[c] << "\n";
-        }
-#endif
-        unsigned char best_fg1[3];
-        unsigned char best_bg1[3];
-        unsigned char best_fg2[3];
-        unsigned char best_bg2[3];
-        unsigned char best_a1;
-        unsigned char best_a2;
-        double best_1 = -1;
-        double best_2 = -1;
-        int count;
-        for (int bxdiff=-3; bxdiff<=3; bxdiff++) {
-          for (int bydiff=-3; bydiff<=3; bydiff++) {
-            if (!(x+bxdiff>=0 && y/2+bydiff>=0 && x+bxdiff < width && y/2+bydiff < height/2))
-              continue;
-
-            unsigned char* bgt = &(new_backgrounds[raise][1][((y/2+bydiff)*width+(x+bxdiff))*3]);
-            for (int fxdiff=-3; fxdiff<=3; fxdiff++) {
-              for (int fydiff=-3; fydiff<=3; fydiff++) {
-                if (!(x+fxdiff>=0 && y/2+fydiff>=0 && x+fxdiff < width && y/2+fydiff < height/2))
-                  continue;
-
-                unsigned char* fgt = &(new_foregrounds[raise][1][((y/2+fydiff)*width+(x+fxdiff))*3]);
-                for (int c=0; c<3; c++) {
-                  f1[c]=foreground1[c]*foreground_ps1[0]+
-                    (1-foreground_ps1[0])*(fgt[c]);
-                  b1[c]=background1[c]*background_ps1[0]+
-                    (1-background_ps1[0])*(bgt[c]);
-                  f2[c]=foreground2[c]*foreground_ps2[0]
-                    +(1-foreground_ps2[0])*(fgt[c]);
-                  b2[c]=background2[c]*background_ps2[0]
-                    +(1-background_ps2[0])*(bgt[c]);
-
-                }
-                double score1 = projection(f1, b1, original1, a1);
-                if (score1 < best_1 || best_1 == -1) {
-                  best_1 = score1;
-                  best_a1 = a1[0];
-                  for (int c=0; c<3; c++) {
-                    best_fg1[c] = fgt[c];
-                    best_bg1[c] = bgt[c];
-                  }
-                }
-                double score2 = projection(f2, b2, original2, a2);
-                if (score2 < best_2 || best_2 == -1) {
-                  best_2 = score2;
-                  best_a2 = a2[0];
-                  for (int c=0; c<3; c++) {
-                    best_fg2[c] = fgt[c];
-                    best_bg2[c] = bgt[c];
-                  }
-                }
-              }
-            }
-          }
-        }
-
-        for (int c=0; c<3; c++) {
-          f1[c] = (best_fg1[c]+f0[c])/2;
-          f2[c] = (best_fg2[c]+f0[c])/2;
-          b1[c] = (best_bg1[c]+b0[c])/2;
-          b2[c] = (best_bg2[c]+b0[c])/2;
-        }
-        for (int c=0; c<3; c++) {
-          f1[c]=foreground1[c]*foreground_ps1[0]+
-            (1-foreground_ps1[0])*(f1[c]);
-          b1[c]=background1[c]*background_ps1[0]+
-            (1-background_ps1[0])*(b1[c]);
-          f2[c]=foreground2[c]*foreground_ps2[0]
-            +(1-foreground_ps2[0])*(f2[c]);
-          b2[c]=background2[c]*background_ps2[0]
-            +(1-background_ps2[0])*(b2[c]);
-
-        }
-        projection(f1, b1, original1, a1);
-        projection(f2, b2, original2, a2);
-      }
-    }
-
-    snprintf(buffer, 100, RESULTS "final_%i.ppm", raise+1);
-    tmp = new unsigned char[width*height*3];
-    for (int y=0; y<height; y++) {
-      for (int x=0; x<width; x++) {
-        for (int c=0; c<3; c++) {
-          tmp[(y*width+x)*3+c] =
-            foregrounds[raise+1][0][(y*width+x)*3+c]*
-            foreground_ps[raise+1][0][(y*width+x)]+
-
-            (new_foregrounds[raise+1][0][(y*width+x)*3+c]
-            *new_alphas[raise+1][0][y*width+x]/255.)*
-
-            (1-foreground_ps[raise+1][0][(y*width+x)]-
-            background_ps[raise+1][0][(y*width+x)]);
-        }
-      }
-    }
-    save_image(buffer, width, height, 3, tmp);
-    delete[] tmp;
-
-    snprintf(buffer, 100, RESULTS "new_foregrounds_%i.ppm", raise+1);
-    save_image(buffer, width, height, 3, new_foregrounds[raise+1][0]);
-    
-    snprintf(buffer, 100, RESULTS "new_backgrounds_%i.ppm", raise+1);
-    save_image(buffer, width, height, 3, new_backgrounds[raise+1][0]);
-    
-    snprintf(buffer, 100, RESULTS "new_alphas_%i.ppm", raise+1);
-    save_image(buffer, width, height, 1, new_alphas[raise+1][0]);
-
-    raise++;
   }
-
+/*
   // cleanup (not strictly needed, but makes valgrind output cleaner)
   delete[] mask;
 
