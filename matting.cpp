@@ -745,8 +745,8 @@ int main() {
               continue;
 
             unsigned char* bgt = &(new_backgrounds[raise][0][((y+bydiff)*width/2+(x/2+bxdiff))*3]);
-            for (int fxdiff=-1; fxdiff<=1; fxdiff++) {
-              for (int fydiff=-1; fydiff<=1; fydiff++) {
+            for (int fxdiff=-3; fxdiff<=3; fxdiff++) {
+              for (int fydiff=-3; fydiff<=3; fydiff++) {
                 if (!(x/2+fxdiff>=0 && y+fydiff>=0 && x/2+fxdiff < width/2 && y+fydiff < height))
                   continue;
 
@@ -784,15 +784,25 @@ int main() {
             }
           }
         }
-
-        a1[0] = best_a1;
-        a2[0] = best_a2;
         for (int c=0; c<3; c++) {
-          f1[c] = best_fg1[c];
-          f2[c] = best_fg2[c];
-          b1[c] = best_bg1[c];
-          b2[c] = best_bg2[c];
+          f1[c] = (best_fg1[c]+f0[c])/2;
+          f2[c] = (best_fg2[c]+f0[c])/2;
+          b1[c] = (best_bg1[c]+b0[c])/2;
+          b2[c] = (best_bg2[c]+b0[c])/2;
         }
+        for (int c=0; c<3; c++) {
+          f1[c]=foreground1[c]*foreground_ps1[0]+
+            (1-foreground_ps1[0])*(f1[c]);
+          b1[c]=background1[c]*background_ps1[0]+
+            (1-background_ps1[0])*(b1[c]);
+          f2[c]=foreground2[c]*foreground_ps2[0]
+            +(1-foreground_ps2[0])*(f2[c]);
+          b2[c]=background2[c]*background_ps2[0]
+            +(1-background_ps2[0])*(b2[c]);
+
+        }
+        projection(f1, b1, original1, a1);
+        projection(f2, b2, original2, a2);
       }
     }
 
@@ -912,8 +922,8 @@ int main() {
               continue;
 
             unsigned char* bgt = &(new_backgrounds[raise][1][((y/2+bydiff)*width+(x+bxdiff))*3]);
-            for (int fxdiff=-1; fxdiff<=1; fxdiff++) {
-              for (int fydiff=-1; fydiff<=1; fydiff++) {
+            for (int fxdiff=-3; fxdiff<=3; fxdiff++) {
+              for (int fydiff=-3; fydiff<=3; fydiff++) {
                 if (!(x+fxdiff>=0 && y/2+fydiff>=0 && x+fxdiff < width && y/2+fydiff < height/2))
                   continue;
 
@@ -952,14 +962,25 @@ int main() {
           }
         }
 
-        a1[0] = best_a1;
-        a2[0] = best_a2;
         for (int c=0; c<3; c++) {
-          f1[c] = best_fg1[c];
-          f2[c] = best_fg2[c];
-          b1[c] = best_bg1[c];
-          b2[c] = best_bg2[c];
+          f1[c] = (best_fg1[c]+f0[c])/2;
+          f2[c] = (best_fg2[c]+f0[c])/2;
+          b1[c] = (best_bg1[c]+b0[c])/2;
+          b2[c] = (best_bg2[c]+b0[c])/2;
         }
+        for (int c=0; c<3; c++) {
+          f1[c]=foreground1[c]*foreground_ps1[0]+
+            (1-foreground_ps1[0])*(f1[c]);
+          b1[c]=background1[c]*background_ps1[0]+
+            (1-background_ps1[0])*(b1[c]);
+          f2[c]=foreground2[c]*foreground_ps2[0]
+            +(1-foreground_ps2[0])*(f2[c]);
+          b2[c]=background2[c]*background_ps2[0]
+            +(1-background_ps2[0])*(b2[c]);
+
+        }
+        projection(f1, b1, original1, a1);
+        projection(f2, b2, original2, a2);
       }
     }
 
