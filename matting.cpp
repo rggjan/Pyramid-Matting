@@ -13,7 +13,7 @@ using namespace std;
 //#define DEBUG_GET_VALUES
 //#define DEBUG_SOLVE_EQUATIONS
 //#define DEBUG_OPTIMIZE_LOOP
-#define DEBUG_TREE
+//#define DEBUG_TREE
 
 unsigned char*
 load_image (const char* filename, int dimx, int dimy, int num_colors) {
@@ -180,6 +180,8 @@ inline void find_best_combination(unsigned char* original,
     unsigned char* background_sure,
     int max_raise,
     int max_stretched,
+    double orig_x,
+    double orig_y,
     unsigned char* final_f,
     unsigned char* final_b,
     unsigned char* final_a){
@@ -192,91 +194,43 @@ inline void find_best_combination(unsigned char* original,
     }
   }
 
-  int width=1;
-  int height=1;
-  int fg_x = 0;
-  int fg_y = 0;
-  int bg_x = 0;
-  int bg_y = 0;
-
   int global_best_score = -1;
 
-  for (int raise=0; raise<=max_raise; raise++) {
-#ifdef DEBUG_TREE
-    if (counter == 295731) {
-      cout << "\n==============\nglobal fg: (" << fg_x << "/" << fg_y << "), bg: (" << bg_x << "/" << bg_y << ")\n";
-    }
-#endif
+  for (int start_raise = 0; start_raise <= max_raise; start_raise ++) {
+    /*int width=1;
+    int height=1;
+    int fg_x = 0;
+    int fg_y = 0;
+    int bg_x = 0;
+    int bg_y = 0;*/
 
-    width *= 2;
-    fg_x *= 2;
-    bg_x *= 2;
+    int width = pow(2, start_raise);
+    int height = width;
+    int fg_x = orig_x * width;
+    int fg_y = orig_y * height;
+    int bg_x = orig_x * width;
+    int bg_y = orig_y * height;
 
-    int local_best_score = -1;
-    int best_fxdiff = 0;
-    int best_bxdiff = 0;
-    for (int fxdiff = 0; fxdiff<=1; fxdiff++) {
-      for (int bxdiff = 0; bxdiff <= 1; bxdiff++) {
-        unsigned char alpha;
-        unsigned char* ft = &(foregrounds[raise][1][(fg_y*width+fg_x+fxdiff)*3]);
-        unsigned char* bt = &(backgrounds[raise][1][(bg_y*width+bg_x+bxdiff)*3]);
-        
-        unsigned char test_f[3];
-        unsigned char test_b[3];
-        for (int c=0; c<3; c++) {
-          test_f[c] = foreground_sure[c]*fg_ps + (1-fg_ps)*ft[c];
-          test_b[c] = background_sure[c]*bg_ps + (1-bg_ps)*bt[c];
-        }
-        double score = projection(test_f, test_b, original, &alpha);
-#ifdef DEBUG_TREE
-        if (counter == 295731) {
-          cout << "\nfg: (" << fg_x+fxdiff << "/" << fg_y << "), bg: (" << bg_x+bxdiff << "/" << bg_y << ")\n";
-          cout << "test_f\ttest_b" << endl;
-          for (int c=0; c<3; c++) {
-            cout << (int)test_f[c] << "\t" << (int)test_b[c] << endl;
-          }
-          cout << "alpha/score: " << (int)alpha << "/" << score << endl;
-        }
-#endif
-        if (score < local_best_score || local_best_score == -1) {
-          local_best_score = score;
-          best_fxdiff = fxdiff;
-          best_bxdiff = bxdiff;
+    for (int raise=start_raise; raise<=max_raise; raise++) {
 
-          if (score < global_best_score || global_best_score == -1) {
-            global_best_score = score;
-            *final_a = alpha;
-            for (int c=0; c<3; c++) {
-              final_f[c] = test_f[c];
-              final_b[c] = test_b[c];
-            }
-          }
-        }
-      }
-    }
-
-    fg_x += best_fxdiff;
-    bg_x += best_bxdiff;
-    if (raise < max_raise || max_stretched > 0) {
 #ifdef DEBUG_TREE
       if (counter == 295731) {
         cout << "\n==============\nglobal fg: (" << fg_x << "/" << fg_y << "), bg: (" << bg_x << "/" << bg_y << ")\n";
       }
 #endif
 
-      // Stretch other direction
-      height *= 2;
-      bg_y *= 2;
-      fg_y *= 2;
+      width *= 2;
+      fg_x *= 2;
+      bg_x *= 2;
 
       int local_best_score = -1;
-      int best_fydiff;
-      int best_bydiff;
-      for (int fydiff = 0; fydiff<=1; fydiff++) {
-        for (int bydiff = 0; bydiff <= 1; bydiff++) {
+      int best_fxdiff = 0;
+      int best_bxdiff = 0;
+      for (int fxdiff = 0; fxdiff<=1; fxdiff++) {
+        for (int bxdiff = 0; bxdiff <= 1; bxdiff++) {
           unsigned char alpha;
-          unsigned char* ft = &(foregrounds[raise+1][0][((fg_y+fydiff)*width+fg_x)*3]);
-          unsigned char* bt = &(backgrounds[raise+1][0][((bg_y+bydiff)*width+bg_x)*3]);
+          unsigned char* ft = &(foregrounds[raise][1][(fg_y*width+fg_x+fxdiff)*3]);
+          unsigned char* bt = &(backgrounds[raise][1][(bg_y*width+bg_x+bxdiff)*3]);
 
           unsigned char test_f[3];
           unsigned char test_b[3];
@@ -285,20 +239,21 @@ inline void find_best_combination(unsigned char* original,
             test_b[c] = background_sure[c]*bg_ps + (1-bg_ps)*bt[c];
           }
           double score = projection(test_f, test_b, original, &alpha);
+//          score *= pow(10,(max_raise-start_raise));
 #ifdef DEBUG_TREE
-        if (counter == 295731) {
-          cout << "\nfg: (" << fg_x << "/" << fg_y+fydiff << "), bg: (" << bg_x << "/" << bg_y+bydiff << ")\n";
-          cout << "test_f\ttest_b" << endl;
-          for (int c=0; c<3; c++) {
-            cout << (int)test_f[c] << "\t" << (int)test_b[c] << endl;
+          if (counter == 295731) {
+            cout << "\nfg: (" << fg_x+fxdiff << "/" << fg_y << "), bg: (" << bg_x+bxdiff << "/" << bg_y << ")\n";
+            cout << "test_f\ttest_b" << endl;
+            for (int c=0; c<3; c++) {
+              cout << (int)test_f[c] << "\t" << (int)test_b[c] << endl;
+            }
+            cout << "alpha/score: " << (int)alpha << "/" << score << endl;
           }
-          cout << "alpha/score: " << (int)alpha << "/" << score << endl;
-        }
 #endif
           if (score < local_best_score || local_best_score == -1) {
             local_best_score = score;
-            best_fydiff = fydiff;
-            best_bydiff = bydiff;
+            best_fxdiff = fxdiff;
+            best_bxdiff = bxdiff;
 
             if (score < global_best_score || global_best_score == -1) {
               global_best_score = score;
@@ -311,9 +266,68 @@ inline void find_best_combination(unsigned char* original,
           }
         }
       }
-      
-      fg_y += best_fydiff;
-      bg_y += best_bydiff;
+
+      fg_x += best_fxdiff;
+      bg_x += best_bxdiff;
+      if (raise < max_raise || max_stretched > 0) {
+#ifdef DEBUG_TREE
+        if (counter == 295731) {
+          cout << "\n==============\nglobal fg: (" << fg_x << "/" << fg_y << "), bg: (" << bg_x << "/" << bg_y << ")\n";
+        }
+#endif
+
+        // Stretch other direction
+        height *= 2;
+        bg_y *= 2;
+        fg_y *= 2;
+
+        int local_best_score = -1;
+        int best_fydiff;
+        int best_bydiff;
+        for (int fydiff = 0; fydiff<=1; fydiff++) {
+          for (int bydiff = 0; bydiff <= 1; bydiff++) {
+            unsigned char alpha;
+            unsigned char* ft = &(foregrounds[raise+1][0][((fg_y+fydiff)*width+fg_x)*3]);
+            unsigned char* bt = &(backgrounds[raise+1][0][((bg_y+bydiff)*width+bg_x)*3]);
+
+            unsigned char test_f[3];
+            unsigned char test_b[3];
+            for (int c=0; c<3; c++) {
+              test_f[c] = foreground_sure[c]*fg_ps + (1-fg_ps)*ft[c];
+              test_b[c] = background_sure[c]*bg_ps + (1-bg_ps)*bt[c];
+            }
+            double score = projection(test_f, test_b, original, &alpha);
+//          score *= pow(10,(max_raise-start_raise));
+#ifdef DEBUG_TREE
+            if (counter == 295731) {
+              cout << "\nfg: (" << fg_x << "/" << fg_y+fydiff << "), bg: (" << bg_x << "/" << bg_y+bydiff << ")\n";
+              cout << "test_f\ttest_b" << endl;
+              for (int c=0; c<3; c++) {
+                cout << (int)test_f[c] << "\t" << (int)test_b[c] << endl;
+              }
+              cout << "alpha/score: " << (int)alpha << "/" << score << endl;
+            }
+#endif
+            if (score < local_best_score || local_best_score == -1) {
+              local_best_score = score;
+              best_fydiff = fydiff;
+              best_bydiff = bydiff;
+
+              if (score < global_best_score || global_best_score == -1) {
+                global_best_score = score;
+                *final_a = alpha;
+                for (int c=0; c<3; c++) {
+                  final_f[c] = test_f[c];
+                  final_b[c] = test_b[c];
+                }
+              }
+            }
+          }
+        }
+
+        fg_y += best_fydiff;
+        bg_y += best_bydiff;
+      }
     }
   }
 }
@@ -594,6 +608,8 @@ int main() {
             foreground1,
             background1,
             raise, 0,
+            ((double)x)/width,
+            ((double)y)/height,
             f1, b1, a1);
         
         find_best_combination(original2,
@@ -606,6 +622,8 @@ int main() {
             foreground2,
             background2,
             raise, 0,
+            ((double)x)/width,
+            ((double)y)/height,
             f2, b2, a2);
 
       }
@@ -705,9 +723,11 @@ int main() {
             foreground1,
             background1,
             raise, 1,
+            ((double)x)/width,
+            ((double)y)/height,
             f1, b1, a1);
         if (raise == 8 && x == 410 && y == 64) {
-          exit(0);
+          //exit(0);
         }
         
         find_best_combination(original2,
@@ -720,6 +740,8 @@ int main() {
             foreground2,
             background2,
             raise, 1,
+            ((double)x)/width,
+            ((double)y)/height,
             f2, b2, a2);
       }
     }
