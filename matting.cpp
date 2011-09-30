@@ -730,48 +730,58 @@ int main() {
           cout << (int)c1[c] << "\t" << (int)c2[c] << "\n";
         }
 #endif
-        double up0, up1, up2;
-        up1 = (1-background_ps1[0]-foreground_ps1[0]);
-        up2 = (1-background_ps2[0]-foreground_ps2[0]);
-        up0 = (up1+up2)/2;
-
         unsigned char best_fg1[3];
         unsigned char best_bg1[3];
         unsigned char best_fg2[3];
         unsigned char best_bg2[3];
         unsigned char best_a1;
         unsigned char best_a2;
-        for (int i=0; i<100; i++) {
-          double best_1 = -1;
-          double best_2 = -1;
-          for (int c=0; c<3; c++) {
-            int r = 1;
-            f1[c]=foreground1[c]*foreground_ps1[0]+
-              (1-foreground_ps1[0])*(f0[c]-r +((f0[c]<256-r&&f0[c]>=r)?rand()%(r*2+1):r));
-            b1[c]=background1[c]*background_ps1[0]+
-              (1-background_ps1[0])*(b0[c]-r +((b0[c]<256-r&&b0[c]>=r)?rand()%(r*2+1):r));
-            f2[c]=foreground2[c]*foreground_ps2[0]
-              +(1-foreground_ps2[0])*(f0[c]-r +((f0[c]<256-r&&f0[c]>=r)?rand()%(r*2+1):r));
-            b2[c]=background2[c]*background_ps2[0]
-              +(1-background_ps2[0])*(b0[c]-r +((b0[c]<256-r&&b0[c]>=r)?rand()%(r*2+1):r));
-            
-          }
-          double score1 = projection(f1, b1, original1, a1);
-          if (score1 < best_1 || best_1 == -1) {
-            best_1 = score1;
-            best_a1 = a1[0];
-            for (int c=0; c<3; c++) {
-              best_fg1[c] = f1[c];
-              best_bg1[c] = b1[c];
-            }
-          }
-          double score2 = projection(f2, b2, original2, a2);
-          if (score2 < best_2 || best_2 == -1) {
-            best_2 = score2;
-            best_a2 = a2[0];
-            for (int c=0; c<3; c++) {
-              best_fg2[c] = f2[c];
-              best_bg2[c] = b2[c];
+        double best_1 = -1;
+        double best_2 = -1;
+        int count = 0;
+        for (int bxdiff=0; bxdiff<=0; bxdiff++) {
+          for (int bydiff=0; bydiff<=0; bydiff++) {
+            if (!(x/2+bxdiff>=0 && y+bydiff>=0 && x/2+bxdiff < width/2 && y+bydiff < height))
+              continue;
+
+            unsigned char* bgt = &(new_backgrounds[raise][0][((y+bydiff)*width/2+(x/2+bxdiff))*3]);
+            for (int fxdiff=0; fxdiff<=0; fxdiff++) {
+              for (int fydiff=0; fydiff<=0; fydiff++) {
+                if (!(x/2+fxdiff>=0 && y+fydiff>=0 && x/2+fxdiff < width/2 && y+fydiff < height))
+                  continue;
+
+                count++;
+                unsigned char* fgt = &(new_foregrounds[raise][0][((y+fydiff)*width/2+(x/2+fxdiff))*3]);
+                for (int c=0; c<3; c++) {
+                  f1[c]=foreground1[c]*foreground_ps1[0]+
+                    (1-foreground_ps1[0])*(fgt[c]);
+                  b1[c]=background1[c]*background_ps1[0]+
+                    (1-background_ps1[0])*(bgt[c]);
+                  f2[c]=foreground2[c]*foreground_ps2[0]
+                    +(1-foreground_ps2[0])*(fgt[c]);
+                  b2[c]=background2[c]*background_ps2[0]
+                    +(1-background_ps2[0])*(bgt[c]);
+
+                }
+                double score1 = projection(f1, b1, original1, a1);
+                if (score1 < best_1 || best_1 == -1) {
+                  best_1 = score1;
+                  best_a1 = a1[0];
+                  for (int c=0; c<3; c++) {
+                    best_fg1[c] = f1[c];
+                    best_bg1[c] = b1[c];
+                  }
+                }
+                double score2 = projection(f2, b2, original2, a2);
+                if (score2 < best_2 || best_2 == -1) {
+                  best_2 = score2;
+                  best_a2 = a2[0];
+                  for (int c=0; c<3; c++) {
+                    best_fg2[c] = f2[c];
+                    best_bg2[c] = b2[c];
+                  }
+                }
+              }
             }
           }
         }
@@ -784,16 +794,6 @@ int main() {
           b1[c] = best_bg1[c];
           b2[c] = best_bg2[c];
         }
-
-#ifdef DEBUG_GET_VALUES
-        cout << "\na1: " << (int)a1[0] << "\n";
-        cout << "a2: " << (int)a2[0] << "\n";
-        cout << "f1\tf2\tb1\tb2\n";
-        for (int c=0; c<3; c++) {
-          cout << (int)f1[c] << "\t" << (int)f2[c] << "\t" <<
-            (int)b1[c] << "\t" << (int)b2[c] << "\n";
-        }
-#endif
       }
     }
 
@@ -898,112 +898,57 @@ int main() {
           cout << (int)c1[c] << "\t" << (int)c2[c] << "\n";
         }
 #endif
-        double up0, up1, up2;
-        up1 = (1-background_ps1[0]-foreground_ps1[0]);
-        up2 = (1-background_ps2[0]-foreground_ps2[0]);
-        up0 = (up1+up2)/2;
-
-        double foreground_avg[3] = {0};
-        double background_avg[3] = {0};
-        int f_counter = 0;
-        int b_counter = 0;
-        for (int xdiff=-1; xdiff<=1; xdiff++) {
-          for (int ydiff=-1; ydiff<=1; ydiff++) {
-            if (!(x+xdiff>=0 && y/2+ydiff>=0 && x+xdiff < width && y/2+ydiff < height/2))
-              continue;
-
-            if (foreground_ps[raise][1][((y/2+ydiff)*width+(x+xdiff))] > 0) {
-              f_counter++;
-              for (int c=0; c<3; c++) {
-                foreground_avg[c] += new_foregrounds[raise][1][((y/2+ydiff)*width+(x+xdiff))*3+c];
-              }
-            }
-            if (background_ps[raise][1][((y/2+ydiff)*width+(x+xdiff))] > 0) {
-              f_counter++;
-              for (int c=0; c<3; c++) {
-                background_avg[c] += new_backgrounds[raise][1][((y/2+ydiff)*width+(x+xdiff))*3+c];
-              }
-            }
-          }
-        }
-        for (int c=0; c<3; c++) {
-          foreground_avg[c] /= f_counter;
-          background_avg[c] /= b_counter;
-        }
-
-        double foreground_var = 0;
-        double background_var = 0;
-        for (int xdiff=-1; xdiff<=1; xdiff++) {
-          for (int ydiff=-1; ydiff<=1; ydiff++) {
-            if (!(x+xdiff>=0 && y/2+ydiff>=0 && x+xdiff < width && y/2+ydiff < height/2))
-              continue;
-            
-            if (foreground_ps[raise][1][((y/2+ydiff)*width+(x+xdiff))] > 0) {
-              for (int c=0; c<3; c++) {
-                double tmp;
-                tmp = new_foregrounds[raise][1][(((y+ydiff)/2)*width+(x+xdiff))*3+c] - foreground_avg[c];
-                foreground_var += tmp*tmp;
-              }
-            }
-            if (background_ps[raise][1][((y/2+ydiff)*width+(x+xdiff))] > 0) {
-              for (int c=0; c<3; c++) {
-                double tmp;
-                tmp = new_backgrounds[raise][1][(((y+ydiff)/2)*width+(x+xdiff))*3+c] - background_avg[c];
-                background_var += tmp*tmp;
-              }
-            }
-          }
-        }
-        foreground_var = sqrt(foreground_var/f_counter);
-        background_var = sqrt(background_var/b_counter);
-        //cout << f_counter << "," << b_counter << "," << foreground_var << "/" << background_var << endl;
-        
         unsigned char best_fg1[3];
         unsigned char best_bg1[3];
         unsigned char best_fg2[3];
         unsigned char best_bg2[3];
         unsigned char best_a1;
         unsigned char best_a2;
-        for (int i=0; i<200; i++) {
-          double best_1 = -1;
-          double best_2 = -1;
-          for (int c=0; c<3; c++) {
-            int r, r2;
-            if (f_counter > 1)
-              r = foreground_var/3;
-            else
-              r = 0;
-            if (b_counter > 1)
-              r2 = background_var/3;
-            else
-              r2 = 0;
+        double best_1 = -1;
+        double best_2 = -1;
+        int count;
+        for (int bxdiff=-1; bxdiff<=1; bxdiff++) {
+          for (int bydiff=-1; bydiff<=1; bydiff++) {
+            if (!(x+bxdiff>=0 && y/2+bydiff>=0 && x+bxdiff < width && y/2+bydiff < height/2))
+              continue;
 
-            f1[c]=foreground1[c]*foreground_ps1[0]+
-              (1-foreground_ps1[0])*(f0[c]-r +((f0[c]<256-r&&f0[c]>=r)?rand()%(r*2+1):r));
-            b1[c]=background1[c]*background_ps1[0]+
-              (1-background_ps1[0])*(b0[c]-r2 +((b0[c]<256-r2&&b0[c]>=r2)?rand()%(r2*2+1):r2));
-            f2[c]=foreground2[c]*foreground_ps2[0]
-              +(1-foreground_ps2[0])*(f0[c]-r +((f0[c]<256-r&&f0[c]>=r)?rand()%(r*2+1):r));
-            b2[c]=background2[c]*background_ps2[0]
-              +(1-background_ps2[0])*(b0[c]-r2 +((b0[c]<256-r2&&b0[c]>=r2)?rand()%(r2*2+1):r2));
+            unsigned char* bgt = &(new_backgrounds[raise][1][((y/2+bydiff)*width+(x+bxdiff))*3]);
+            for (int fxdiff=-1; fxdiff<=1; fxdiff++) {
+              for (int fydiff=-1; fydiff<=1; fydiff++) {
+                if (!(x+fxdiff>=0 && y/2+fydiff>=0 && x+fxdiff < width && y/2+fydiff < height/2))
+                  continue;
 
-          }
-          double score1 = projection(f1, b1, original1, a1);
-          if (score1 < best_1 || best_1 == -1) {
-            best_1 = score1;
-            best_a1 = a1[0];
-            for (int c=0; c<3; c++) {
-              best_fg1[c] = f1[c];
-              best_bg1[c] = b1[c];
-            }
-          }
-          double score2 = projection(f2, b2, original2, a2);
-          if (score2 < best_2 || best_2 == -1) {
-            best_2 = score2;
-            best_a2 = a2[0];
-            for (int c=0; c<3; c++) {
-              best_fg2[c] = f2[c];
-              best_bg2[c] = b2[c];
+                unsigned char* fgt = &(new_foregrounds[raise][1][((y/2+fydiff)*width+(x+fxdiff))*3]);
+                for (int c=0; c<3; c++) {
+                  f1[c]=foreground1[c]*foreground_ps1[0]+
+                    (1-foreground_ps1[0])*(fgt[c]);
+                  b1[c]=background1[c]*background_ps1[0]+
+                    (1-background_ps1[0])*(bgt[c]);
+                  f2[c]=foreground2[c]*foreground_ps2[0]
+                    +(1-foreground_ps2[0])*(fgt[c]);
+                  b2[c]=background2[c]*background_ps2[0]
+                    +(1-background_ps2[0])*(bgt[c]);
+
+                }
+                double score1 = projection(f1, b1, original1, a1);
+                if (score1 < best_1 || best_1 == -1) {
+                  best_1 = score1;
+                  best_a1 = a1[0];
+                  for (int c=0; c<3; c++) {
+                    best_fg1[c] = f1[c];
+                    best_bg1[c] = b1[c];
+                  }
+                }
+                double score2 = projection(f2, b2, original2, a2);
+                if (score2 < best_2 || best_2 == -1) {
+                  best_2 = score2;
+                  best_a2 = a2[0];
+                  for (int c=0; c<3; c++) {
+                    best_fg2[c] = f2[c];
+                    best_bg2[c] = b2[c];
+                  }
+                }
+              }
             }
           }
         }
