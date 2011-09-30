@@ -13,6 +13,7 @@ using namespace std;
 //#define DEBUG_GET_VALUES
 //#define DEBUG_SOLVE_EQUATIONS
 //#define DEBUG_OPTIMIZE_LOOP
+#define DEBUG_TREE
 
 unsigned char*
 load_image (const char* filename, int dimx, int dimy, int num_colors) {
@@ -49,287 +50,6 @@ save_image (const char* filename, int dimx, int dimy, int num_colors, unsigned c
   fwrite(data, 1, dimx*dimy*num_colors, fp);
   
   fclose (fp);
-}
-
-// a1 and f1 known
-double solve_equations(unsigned char* f0, unsigned char* f1, unsigned char* f2,
-    unsigned char* b0, unsigned char* b1, unsigned char* b2,
-    unsigned char* a0, unsigned char* a1, unsigned char* a2,
-    unsigned char* c1, unsigned char* c2,
-    double up0, double up1, double up2) {
-#ifdef DEBUG_SOLVE_EQUATIONS
-  cout << "\nSolve\n";
-  cout << "a0: " << (int)a0[0] << "\n";
-  cout << "a1: " << (int)a1[0] << "\n";
-  cout << "up0: " << up0 << "\n";
-  cout << "up1: " << up1 << "\n";
-  cout << "up2: " << up2 << "\n";
-  cout << "f0\tf1\tb0\tc1\tc2\n";
-  for (int c=0; c<3; c++) {
-    cout << (int)f0[c] << "\t" << (int)f1[c] << "\t" << (int)b0[c] << "\t" <<
-      (int)c1[c] << "\t" << (int)c2[c] << "\n";
-  }
-#endif
-
-  int nb1[3];
-  int nf2[3];
-  int nb2[3];
-  a2[0] = (2*a0[0]*up0-a1[0]*up1)/up2;
-  for (int c=0; c<3; c++) {
-    // set the same fore/background as in the combined pixel if it is not used
-    float alpha1 = a1[0]/255.;
-    float alpha2 = a2[0]/255.;
-    float alpha0 = a0[0]/255.;
-    float background_alpha1 = 1-alpha1;
-    float background_alpha2 = 1-alpha2;
-
-    if (background_alpha1 != 0.0) {
-      nb1[c] = (c1[c] - f1[c]*alpha1)/background_alpha1;
-    } else {
-      nb1[c] = b0[c];
-    }
-
-    if (alpha2 != 0.0) {
-      nf2[c] = (2*f0[c]*up0*alpha0 - f1[c]*alpha1*up1)/(alpha2*up2);
-    } else {
-      nf2[c] = f0[c];
-    }
-
-    if (background_alpha2 != 0.0) {
-      nb2[c] = (c2[c] - nf2[c]*alpha2)/background_alpha2;
-    } else {
-      nb2[c] = b0[c];
-    }
-  }
-
-#ifdef DEBUG_SOLVE_EQUATIONS
-  cout << "new_alpha2: " << (int)a2[0] << "\n";
-  cout << "new_b1\tnew_b2\tnew_f2\n";
-  for (int c=0; c<3; c++) {
-    cout << (int)nb1[c] << "\t" << (int)nb2[c] << "\t" <<
-      (int)nf2[c] << "\n";
-  }
-#endif
-
-  double quality = 0;
-  for (int c=0; c<3; c++) {
-    double diff = nb1[c]-255;
-    if (diff > 0) {
-      quality -= diff*diff;
-      nb1[c] = 255;
-    } else if (nb1[c] < 0) {
-      quality -= nb1[c]*nb1[c];
-      nb1[c] = 0;
-    }
-
-    diff = nf2[c]-255;
-    if (diff > 0) {
-      quality -= diff*diff;
-      nf2[c] = 255;
-    } else if (nf2[c] < 0) {
-      quality -= nf2[c]*nf2[c];
-      nf2[c] = 0;
-    }
-    
-    diff = nb2[c]-255;
-    if (diff > 0) {
-      quality -= diff*diff;
-      nb2[c] = 255;
-    } else if (nb2[c] < 0) {
-      quality -= nb2[c]*nb2[c];
-      nb2[c] = 0;
-    }
-
-    b1[c] = nb1[c];
-    f2[c] = nf2[c];
-    b2[c] = nb2[c];
-  }
-
-  //quality = 0;
-  if (quality == 0) {
-    for (int c=0; c<3; c++) {
-      int diff = f1[c]-f0[c];
-      quality += diff*diff;
-      
-      diff = f2[c]-f0[c];
-      quality += diff*diff;
-      
-      diff = b1[c]-b0[c];
-      quality += diff*diff;
-      
-      diff = b2[c]-b0[c];
-      quality += diff*diff;
-    }
-      
-    int diff = a1[0]-a0[0];
-    quality += diff*diff;
-
-    diff = a2[0]-a0[0];
-    quality += diff*diff;
-  }
-  return quality;
-}
-
-// a1 and f1 unknown
-void optimize(unsigned char* f0, unsigned char* f1, unsigned char* f2,
-    unsigned char* b0, unsigned char* b1, unsigned char* b2,
-    unsigned char* a0, unsigned char* a1, unsigned char* a2,
-    unsigned char* c1, unsigned char* c2,
-    double up0, double up1, double up2) {
-
-  unsigned char best_f1[3] = {0};
-  unsigned char best_a = 0;
-
-  int best_result = INT_MIN;
-  for (a1[0] = 0; a1[0] < 251; a1[0]+=4) {
-    cout << (int)a1[0] << "/255" << endl;
-    for (f1[0] = 0; f1[0] < 251; f1[0]+=4) {
-      for (f1[1] = 0; f1[1] < 251; f1[1]+=4) {
-        for (f1[2] = 0; f1[2] < 251; f1[2]+=4) {
-          int result = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2, up0, up1, up2);
-          if (best_result < 0) {
-            if (result > best_result) {
-              best_result = result;
-              best_a = a1[0];
-              for (int c=0; c<3; c++) {
-                best_f1[c] = f1[c];
-              }
-#ifdef DEBUG_OPTIMIZE_LOOP
-              cout << "New best result: " << best_result << "\n";
-              cout << "a1: " << (int)a1[0] << "\n";
-              cout << "a2: " << (int)a2[0] << "\n";
-              cout << "f1\tf2\tb1\tb2\n";
-              for (int c=0; c<3; c++) {
-                cout << (int)f1[c] << "\t" << (int)f2[c] << "\t" << (int)b1[c] << "\t" <<
-                  (int)b2[c] << "\n";
-              }
-#endif
-            }
-          } else {
-            if (result > 0 && result < best_result) {
-              best_result = result;
-              best_a = a1[0];
-              for (int c=0; c<3; c++) {
-                best_f1[c] = f1[c];
-              }
-#ifdef DEBUG_OPTIMIZE_LOOP
-              cout << "New best result: " << best_result << "\n";
-              cout << "a1: " << (int)a1[0] << "\n";
-              cout << "a2: " << (int)a2[0] << "\n";
-              cout << "f1\tf2\tb1\tb2\n";
-              for (int c=0; c<3; c++) {
-                cout << (int)f1[c] << "\t" << (int)f2[c] << "\t" << (int)b1[c] << "\t" <<
-                  (int)b2[c] << "\n";
-              }
-#endif
-            }
-          }
-        }
-      }
-    }
-  }
-
-  /*f1[0] = f0[0];
-  f1[1] = f0[1];
-  f1[2] = f0[2];
-  a1[0] = 128;*/
-
-      /*
-    f1[0] = rand()%256;
-    f1[1] = rand()%256;
-    f1[2] = rand()%256;
-    a1[0] = rand()%256;
-
-    for (int i=0; i<100; i++) {
-      // alpha
-      int qplus, qminus;
-      if (a1[0] != 255)
-        a1[0]++;
-      qplus = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
-      if (a1[0] != 255)
-        a1[0]--;
-
-      if (a1[0] != 0)
-        a1[0]--;
-      qminus = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
-      if (a1[0] != 0)
-        a1[0]++;
-
-      cout << (int)f1[0] << "/" << (int)f1[1] << "/" << (int)f1[2] << "/" << (int)a1[0]+1 << ": " << qplus << endl;
-
-      if (qplus > 0)
-        if (qminus > 0)
-          if (qplus < qminus)
-            a1[0]++;
-          else
-            a1[0]--;
-        else
-          a1[0]++;
-      else
-        if (qminus > 0)
-          a1[0]--;
-        else
-          if (qminus > qplus)
-            a1[0]--;
-          else
-            a1[0]++;
-
-      for (int c=0; c<3; c++) {
-        int qplus, qminus;
-        if (f1[c] != 255) {
-          f1[c]++;
-          qplus = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
-          f1[c]--;
-        } else {
-          qplus = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
-        }
-
-        if (f1[c] != 0) {
-          f1[c]--;
-          qminus = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
-          f1[c]++;
-        } else {
-          qminus = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
-        }
-
-        if (qplus > 0) {
-          if (qminus > 0) {
-            if (qplus < qminus) {
-              if (f1[c] != 255)
-                f1[c]++;
-            } else {
-              if (f1[c] != 0)
-                f1[c]--;
-            }
-          } else {
-            if (f1[c] != 255)
-              f1[c]++;
-          }
-        } else {
-          if (qminus > 0) {
-            if (f1[c] != 0)
-              f1[c]--;
-          } else {
-            if (qminus > qplus) {
-              if (f1[c] != 0)
-                f1[c]--;
-            } else {
-              if (f1[c] != 255)
-                f1[c]++;
-            }
-          }
-        }
-      }
-    }
-  }*/
-  
-  a1[0] = best_a;
-  for (int c=0; c<3; c++) {
-    f1[c] = best_f1[c];
-  }
-  solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2, up0, up1, up2);
-
-  //cout << "alpha 0/1/2: " << (int)a0[0] << "/" << (int)a1[0] << "/" << (int)a2[0] << "\n";
 }
 
 double projection (unsigned char F[3], unsigned char B[3], unsigned char C[3], unsigned char* alpha_pointer) {
@@ -465,8 +185,11 @@ inline void find_best_combination(unsigned char* original,
     unsigned char* final_a){
   static int counter = 0;
   counter++;
-  if (counter == 10000) {
-    cout << max_raise << endl;
+  if (counter == 295731) {
+    cout << "Original: " << endl;
+    for (int c=0; c<3; c++) {
+      cout << (int)original[c] << endl;
+    }
   }
 
   int width=1;
@@ -479,25 +202,21 @@ inline void find_best_combination(unsigned char* original,
   int global_best_score = -1;
 
   for (int raise=0; raise<=max_raise; raise++) {
-    if (counter == 10000) {
-      cout << fg_x << "/" << fg_y << " " << bg_x << "/" << bg_y << endl;
+#ifdef DEBUG_TREE
+    if (counter == 295731) {
+      cout << "\n==============\nglobal fg: (" << fg_x << "/" << fg_y << "), bg: (" << bg_x << "/" << bg_y << ")\n";
     }
+#endif
 
     width *= 2;
     fg_x *= 2;
     bg_x *= 2;
 
     int local_best_score = -1;
-    int best_fxdiff;
-    int best_bxdiff;
+    int best_fxdiff = 0;
+    int best_bxdiff = 0;
     for (int fxdiff = 0; fxdiff<=1; fxdiff++) {
-      if (foreground_ps[raise][1][(fg_y*width+fg_x+fxdiff)] == 0)
-        continue;
-
       for (int bxdiff = 0; bxdiff <= 1; bxdiff++) {
-        if (background_ps[raise][1][(bg_y*width+bg_x+bxdiff)] == 0)
-          continue;
-
         unsigned char alpha;
         unsigned char* ft = &(foregrounds[raise][1][(fg_y*width+fg_x+fxdiff)*3]);
         unsigned char* bt = &(backgrounds[raise][1][(bg_y*width+bg_x+bxdiff)*3]);
@@ -509,9 +228,16 @@ inline void find_best_combination(unsigned char* original,
           test_b[c] = background_sure[c]*bg_ps + (1-bg_ps)*bt[c];
         }
         double score = projection(test_f, test_b, original, &alpha);
-        if (counter == 10000) {
-          cout << "s: " << score << endl;
+#ifdef DEBUG_TREE
+        if (counter == 295731) {
+          cout << "\nfg: (" << fg_x+fxdiff << "/" << fg_y << "), bg: (" << bg_x+bxdiff << "/" << bg_y << ")\n";
+          cout << "test_f\ttest_b" << endl;
+          for (int c=0; c<3; c++) {
+            cout << (int)test_f[c] << "\t" << (int)test_b[c] << endl;
+          }
+          cout << "alpha/score: " << (int)alpha << "/" << score << endl;
         }
+#endif
         if (score < local_best_score || local_best_score == -1) {
           local_best_score = score;
           best_fxdiff = fxdiff;
@@ -531,8 +257,13 @@ inline void find_best_combination(unsigned char* original,
 
     fg_x += best_fxdiff;
     bg_x += best_bxdiff;
-
     if (raise < max_raise || max_stretched > 0) {
+#ifdef DEBUG_TREE
+      if (counter == 295731) {
+        cout << "\n==============\nglobal fg: (" << fg_x << "/" << fg_y << "), bg: (" << bg_x << "/" << bg_y << ")\n";
+      }
+#endif
+
       // Stretch other direction
       height *= 2;
       bg_y *= 2;
@@ -542,13 +273,7 @@ inline void find_best_combination(unsigned char* original,
       int best_fydiff;
       int best_bydiff;
       for (int fydiff = 0; fydiff<=1; fydiff++) {
-        if (foreground_ps[raise+1][0][((fg_y+fydiff)*width+fg_x)] == 0)
-          continue;
-
         for (int bydiff = 0; bydiff <= 1; bydiff++) {
-          if (background_ps[raise+1][0][((bg_y+bydiff)*width+bg_x)] == 0)
-            continue;
-
           unsigned char alpha;
           unsigned char* ft = &(foregrounds[raise+1][0][((fg_y+fydiff)*width+fg_x)*3]);
           unsigned char* bt = &(backgrounds[raise+1][0][((bg_y+bydiff)*width+bg_x)*3]);
@@ -560,6 +285,16 @@ inline void find_best_combination(unsigned char* original,
             test_b[c] = background_sure[c]*bg_ps + (1-bg_ps)*bt[c];
           }
           double score = projection(test_f, test_b, original, &alpha);
+#ifdef DEBUG_TREE
+        if (counter == 295731) {
+          cout << "\nfg: (" << fg_x << "/" << fg_y+fydiff << "), bg: (" << bg_x << "/" << bg_y+bydiff << ")\n";
+          cout << "test_f\ttest_b" << endl;
+          for (int c=0; c<3; c++) {
+            cout << (int)test_f[c] << "\t" << (int)test_b[c] << endl;
+          }
+          cout << "alpha/score: " << (int)alpha << "/" << score << endl;
+        }
+#endif
           if (score < local_best_score || local_best_score == -1) {
             local_best_score = score;
             best_fydiff = fydiff;
@@ -959,6 +694,7 @@ int main() {
         }
 #endif
 
+
         find_best_combination(original1,
             new_foregrounds,
             new_backgrounds,
@@ -970,6 +706,9 @@ int main() {
             background1,
             raise, 1,
             f1, b1, a1);
+        if (raise == 8 && x == 410 && y == 64) {
+          exit(0);
+        }
         
         find_best_combination(original2,
             new_foregrounds,
