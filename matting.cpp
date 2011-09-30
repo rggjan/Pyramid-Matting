@@ -739,8 +739,8 @@ int main() {
         double best_1 = -1;
         double best_2 = -1;
         int count;
-        for (int bxdiff=-1; bxdiff<=1; bxdiff++) {
-          for (int bydiff=-1; bydiff<=1; bydiff++) {
+        for (int bxdiff=-3; bxdiff<=3; bxdiff++) {
+          for (int bydiff=-3; bydiff<=3; bydiff++) {
             if (!(x/2+bxdiff>=0 && y+bydiff>=0 && x/2+bxdiff < width/2 && y+bydiff < height))
               continue;
 
@@ -767,8 +767,8 @@ int main() {
                   best_1 = score1;
                   best_a1 = a1[0];
                   for (int c=0; c<3; c++) {
-                    best_fg1[c] = f1[c];
-                    best_bg1[c] = b1[c];
+                    best_fg1[c] = fgt[c];
+                    best_bg1[c] = bgt[c];
                   }
                 }
                 double score2 = projection(f2, b2, original2, a2);
@@ -776,8 +776,8 @@ int main() {
                   best_2 = score2;
                   best_a2 = a2[0];
                   for (int c=0; c<3; c++) {
-                    best_fg2[c] = f2[c];
-                    best_bg2[c] = b2[c];
+                    best_fg2[c] = fgt[c];
+                    best_bg2[c] = bgt[c];
                   }
                 }
               }
@@ -916,8 +916,8 @@ int main() {
         double best_1 = -1;
         double best_2 = -1;
         int count;
-        for (int bxdiff=-1; bxdiff<=1; bxdiff++) {
-          for (int bydiff=-1; bydiff<=1; bydiff++) {
+        for (int bxdiff=-3; bxdiff<=3; bxdiff++) {
+          for (int bydiff=-3; bydiff<=3; bydiff++) {
             if (!(x+bxdiff>=0 && y/2+bydiff>=0 && x+bxdiff < width && y/2+bydiff < height/2))
               continue;
 
@@ -944,8 +944,8 @@ int main() {
                   best_1 = score1;
                   best_a1 = a1[0];
                   for (int c=0; c<3; c++) {
-                    best_fg1[c] = f1[c];
-                    best_bg1[c] = b1[c];
+                    best_fg1[c] = fgt[c];
+                    best_bg1[c] = bgt[c];
                   }
                 }
                 double score2 = projection(f2, b2, original2, a2);
@@ -953,8 +953,8 @@ int main() {
                   best_2 = score2;
                   best_a2 = a2[0];
                   for (int c=0; c<3; c++) {
-                    best_fg2[c] = f2[c];
-                    best_bg2[c] = b2[c];
+                    best_fg2[c] = fgt[c];
+                    best_bg2[c] = bgt[c];
                   }
                 }
               }
