@@ -452,6 +452,8 @@ double projection (unsigned char F[3], unsigned char B[3], unsigned char C[3], u
 inline void find_best_combination(unsigned char* original,
     unsigned char* foregrounds[10][2],
     unsigned char* backgrounds[10][2],
+    double* foreground_ps[10][2],
+    double* background_ps[10][2],
     double fg_ps,
     double bg_ps,
     unsigned char* foreground_sure,
@@ -461,6 +463,12 @@ inline void find_best_combination(unsigned char* original,
     unsigned char* final_f,
     unsigned char* final_b,
     unsigned char* final_a){
+  static int counter = 0;
+  counter++;
+  if (counter == 10000) {
+    cout << max_raise << endl;
+  }
+
   int width=1;
   int height=1;
   int fg_x = 0;
@@ -471,6 +479,10 @@ inline void find_best_combination(unsigned char* original,
   int global_best_score = -1;
 
   for (int raise=0; raise<=max_raise; raise++) {
+    if (counter == 10000) {
+      cout << fg_x << "/" << fg_y << " " << bg_x << "/" << bg_y << endl;
+    }
+
     width *= 2;
     fg_x *= 2;
     bg_x *= 2;
@@ -479,7 +491,13 @@ inline void find_best_combination(unsigned char* original,
     int best_fxdiff;
     int best_bxdiff;
     for (int fxdiff = 0; fxdiff<=1; fxdiff++) {
+      if (foreground_ps[raise][1][(fg_y*width+fg_x+fxdiff)] == 0)
+        continue;
+
       for (int bxdiff = 0; bxdiff <= 1; bxdiff++) {
+        if (background_ps[raise][1][(bg_y*width+bg_x+bxdiff)] == 0)
+          continue;
+
         unsigned char alpha;
         unsigned char* ft = &(foregrounds[raise][1][(fg_y*width+fg_x+fxdiff)*3]);
         unsigned char* bt = &(backgrounds[raise][1][(bg_y*width+bg_x+bxdiff)*3]);
@@ -491,6 +509,9 @@ inline void find_best_combination(unsigned char* original,
           test_b[c] = background_sure[c]*bg_ps + (1-bg_ps)*bt[c];
         }
         double score = projection(test_f, test_b, original, &alpha);
+        if (counter == 10000) {
+          cout << "s: " << score << endl;
+        }
         if (score < local_best_score || local_best_score == -1) {
           local_best_score = score;
           best_fxdiff = fxdiff;
@@ -521,7 +542,13 @@ inline void find_best_combination(unsigned char* original,
       int best_fydiff;
       int best_bydiff;
       for (int fydiff = 0; fydiff<=1; fydiff++) {
+        if (foreground_ps[raise+1][0][((fg_y+fydiff)*width+fg_x)] == 0)
+          continue;
+
         for (int bydiff = 0; bydiff <= 1; bydiff++) {
+          if (background_ps[raise+1][0][((bg_y+bydiff)*width+bg_x)] == 0)
+            continue;
+
           unsigned char alpha;
           unsigned char* ft = &(foregrounds[raise+1][0][((fg_y+fydiff)*width+fg_x)*3]);
           unsigned char* bt = &(backgrounds[raise+1][0][((bg_y+bydiff)*width+bg_x)*3]);
@@ -825,6 +852,8 @@ int main() {
         find_best_combination(original1,
             new_foregrounds,
             new_backgrounds,
+            foreground_ps,
+            background_ps,
             foreground_ps1[0],
             background_ps1[0],
             foreground1,
@@ -835,6 +864,8 @@ int main() {
         find_best_combination(original2,
             new_foregrounds,
             new_backgrounds,
+            foreground_ps,
+            background_ps,
             foreground_ps2[0],
             background_ps2[0],
             foreground2,
@@ -931,6 +962,8 @@ int main() {
         find_best_combination(original1,
             new_foregrounds,
             new_backgrounds,
+            foreground_ps,
+            background_ps,
             foreground_ps1[0],
             background_ps1[0],
             foreground1,
@@ -941,6 +974,8 @@ int main() {
         find_best_combination(original2,
             new_foregrounds,
             new_backgrounds,
+            foreground_ps,
+            background_ps,
             foreground_ps2[0],
             background_ps2[0],
             foreground2,
