@@ -306,7 +306,7 @@ int main() {
 
     for (int y=0; y<height; y+=2) {
       for (int x=0; x<width; x+=2) {
-        double best_fbs[2][2][2][3];
+/*        double best_fbs[2][2][2][3];
         double best_score[2][2] = {{-1, -1}, {-1, -1}};
         
         double* fbt[2];
@@ -358,23 +358,24 @@ int main() {
             }
           }
         }
+*/
+        int id = (y*width+x);
+        int id3 = id*3;
+        for (int n=0; n<4; n++) {
+          int idn = (y/2+(n&1))*(width/2)+x/2+(n/2);
+          int idn3 = idn*3;
+          for (int b=0; b<2; b++) {
+            for (int c=0; c<3; c++) {
+              double cur_portion = portion[b][idn];
 
-        for (int nx=0; nx<2; nx++) {
-          for (int ny=0; ny<2; ny++) {
-            for (int b=0; b<2; b++) {
-              for (int c=0; c<3; c++) {
-                double cur_ps = portion_list[raise][b][(y+ny)*width+x+nx];
-                final_list[raise][b][((y+ny)*width+x+nx)*3+c] =
-                  ((best_fbs[nx][ny][b][c]
-                  + color_list[raise-1][b][(y/2*width/2+x/2)*3+c])/2)*(1-cur_ps)
-                  + color_list[raise][b][((y+ny)*width+x+nx)]*cur_ps;
-              }
-              projection(&(final_list[raise][0][((y+ny)*width+x+nx)*3]),
-                  &(final_list[raise][1][((y+ny)*width+x+nx)*3]),
-                  &(original_list[raise][((y*ny)*width+x+nx)*3]),
-                  &(alpha_list[raise][((y*ny)*width+x+nx)*3]));
+              final[b][idn3+c] = cur_portion*color[b][idn3+c]+
+                (1-cur_portion)*old_final[b][id3+c];
             }
           }
+          projection(&(final[0][idn3]),
+                     &(final[1][idn3]),
+                     &(original[idn3]),
+                     &(alpha[idn]));
         }
       }
     }
@@ -387,7 +388,7 @@ int main() {
         int id = y*width+x;
         int id3 = id*3;
         for (int c=0; c<3; c++) {
-          tmp[id3] = portion[0][id]*color[0][id3+c]
+          tmp[id3+c] = portion[0][id]*color[0][id3+c]
             +final[0][id3+c]*alpha[id]
             *(1-portion[0][id]-portion[1][id]);
         }
