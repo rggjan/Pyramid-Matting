@@ -227,13 +227,13 @@ int main() {
 
     static char buffer[100];
     snprintf(buffer, 100, RESULTS "originals_%i.ppm", raise);
-    save_image(buffer, width, height, 3, original_list[raise]);
+    save_image(buffer, width, height, 3, original);
     
     snprintf(buffer, 100, RESULTS "foregrounds_%i.ppm", raise);
-    save_image(buffer, width, height, 3, color_list[raise][0]);
+    save_image(buffer, width, height, 3, color[0]);
     
     snprintf(buffer, 100, RESULTS "backgrounds_%i.ppm", raise);
-    save_image(buffer, width, height, 3, color_list[raise][1]);
+    save_image(buffer, width, height, 3, color[1]);
   }
   
 
@@ -253,12 +253,12 @@ int main() {
   // Calculate alpha
   double merged_point[3];
   for (int c=0; c<3; c++) {
-    double pf = portion_list[0][0][0];
-    double pb = portion_list[0][1][0];
+    double portion_foreground = portion_list[0][0][0];
+    double portion_background = portion_list[0][1][0];
     merged_point[c] = (original_list[0][c]
-      -pf*color_list[0][0][c]
-      -pb*color_list[0][1][c])
-      /(1-pf-pb);
+      -portion_foreground*color_list[0][0][c]
+      -portion_background*color_list[0][1][c])
+      /(1-portion_foreground-portion_background);
   }
 
   projection(final_list[0][0], final_list[0][1],
@@ -283,10 +283,26 @@ int main() {
     height *= 2;
     raise++;
 
+    double* original = original_list[raise];
+    double* old_original = original_list[raise-1];
+
+    double* color[2] = {color_list[raise][0], color_list[raise][1]};
+    double* old_color[2] = {color_list[raise-1][0], color_list[raise-1][1]};
+
+    double* portion[2] = {portion_list[raise][0], portion_list[raise][1]};
+    double* old_portion[2] = {portion_list[raise-1][0],
+                              portion_list[raise-1][1]};
+
+    double* alpha = alpha_list[raise];
+    double* old_alpha = alpha_list[raise-1];
+    
+    double* final[2] = {final_list[raise][0], final_list[raise][1]};
+    double* old_final[2] = {final_list[raise-1][0], final_list[raise-1][1]};
+
+    alpha = new double[width*height];
     for (int b=0; b<2; b++) {
-      final_list[raise][b] = new double[width*height*3];
+      final[b] = new double[width*height*3];
     }
-    alpha_list[raise] = new double[width*height];
 
     for (int y=0; y<height; y+=2) {
       for (int x=0; x<width; x+=2) {
@@ -368,11 +384,12 @@ int main() {
     double *tmp = new double[width*height*3];
     for (int y=0; y<height; y++) {
       for (int x=0; x<width; x++) {
+        int id = y*width+x;
+        int id3 = id*3;
         for (int c=0; c<3; c++) {
-          tmp[(y*width+x)*3+c] = portion_list[raise][0][y*width+1]
-            *color_list[raise][0][(y*width+1)*3+c]
-            +final_list[raise][0][(y*width+x)*3+c]*alpha_list[raise][(y*width+x)]
-            *(1-portion_list[raise][0][y*width+x]-portion_list[raise][1][y*width+x]);
+          tmp[id3] = portion[0][id]*color[0][id3+c]
+            +final[0][id3+c]*alpha[id]
+            *(1-portion[0][id]-portion[1][id]);
         }
       }
     }
@@ -380,13 +397,13 @@ int main() {
     delete[] tmp;
 
     snprintf(buffer, 100, RESULTS "new_foregrounds_%i.ppm", raise);
-    save_image(buffer, width, height, 3, final_list[raise][0]);
+    save_image(buffer, width, height, 3, final[0]);
     
     snprintf(buffer, 100, RESULTS "new_backgrounds_%i.ppm", raise);
-    save_image(buffer, width, height, 3, final_list[raise][1]);
+    save_image(buffer, width, height, 3, final[1]);
     
     snprintf(buffer, 100, RESULTS "new_alphas_%i.ppm", raise);
-    save_image(buffer, width, height, 1, alpha_list[raise]);
+    save_image(buffer, width, height, 1, alpha);
     
   }
 /*
