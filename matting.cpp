@@ -30,7 +30,6 @@ load_image (const char* filename, int dimx, int dimy, int num_colors) {
   return data_double;
 }
 
-
 void
 save_image (const char* filename, int dimx, int dimy, int num_colors,
     double* data) {
@@ -70,287 +69,6 @@ save_image (const char* filename, int dimx, int dimy, int num_colors,
   fclose (fp);
 
   delete[] char_data;
-}
-
-// a1 and f1 known
-double solve_equations(unsigned char* f0, unsigned char* f1, unsigned char* f2,
-    unsigned char* b0, unsigned char* b1, unsigned char* b2,
-    unsigned char* a0, unsigned char* a1, unsigned char* a2,
-    unsigned char* c1, unsigned char* c2,
-    double up0, double up1, double up2) {
-#ifdef DEBUG_SOLVE_EQUATIONS
-  cout << "\nSolve\n";
-  cout << "a0: " << (int)a0[0] << "\n";
-  cout << "a1: " << (int)a1[0] << "\n";
-  cout << "up0: " << up0 << "\n";
-  cout << "up1: " << up1 << "\n";
-  cout << "up2: " << up2 << "\n";
-  cout << "f0\tf1\tb0\tc1\tc2\n";
-  for (int c=0; c<3; c++) {
-    cout << (int)f0[c] << "\t" << (int)f1[c] << "\t" << (int)b0[c] << "\t" <<
-      (int)c1[c] << "\t" << (int)c2[c] << "\n";
-  }
-#endif
-
-  int nb1[3];
-  int nf2[3];
-  int nb2[3];
-  a2[0] = (2*a0[0]*up0-a1[0]*up1)/up2;
-  for (int c=0; c<3; c++) {
-    // set the same fore/background as in the combined pixel if it is not used
-    float alpha1 = a1[0]/255.;
-    float alpha2 = a2[0]/255.;
-    float alpha0 = a0[0]/255.;
-    float background_alpha1 = 1-alpha1;
-    float background_alpha2 = 1-alpha2;
-
-    if (background_alpha1 != 0.0) {
-      nb1[c] = (c1[c] - f1[c]*alpha1)/background_alpha1;
-    } else {
-      nb1[c] = b0[c];
-    }
-
-    if (alpha2 != 0.0) {
-      nf2[c] = (2*f0[c]*up0*alpha0 - f1[c]*alpha1*up1)/(alpha2*up2);
-    } else {
-      nf2[c] = f0[c];
-    }
-
-    if (background_alpha2 != 0.0) {
-      nb2[c] = (c2[c] - nf2[c]*alpha2)/background_alpha2;
-    } else {
-      nb2[c] = b0[c];
-    }
-  }
-
-#ifdef DEBUG_SOLVE_EQUATIONS
-  cout << "new_alpha2: " << (int)a2[0] << "\n";
-  cout << "new_b1\tnew_b2\tnew_f2\n";
-  for (int c=0; c<3; c++) {
-    cout << (int)nb1[c] << "\t" << (int)nb2[c] << "\t" <<
-      (int)nf2[c] << "\n";
-  }
-#endif
-
-  double quality = 0;
-  for (int c=0; c<3; c++) {
-    double diff = nb1[c]-255;
-    if (diff > 0) {
-      quality -= diff*diff;
-      nb1[c] = 255;
-    } else if (nb1[c] < 0) {
-      quality -= nb1[c]*nb1[c];
-      nb1[c] = 0;
-    }
-
-    diff = nf2[c]-255;
-    if (diff > 0) {
-      quality -= diff*diff;
-      nf2[c] = 255;
-    } else if (nf2[c] < 0) {
-      quality -= nf2[c]*nf2[c];
-      nf2[c] = 0;
-    }
-    
-    diff = nb2[c]-255;
-    if (diff > 0) {
-      quality -= diff*diff;
-      nb2[c] = 255;
-    } else if (nb2[c] < 0) {
-      quality -= nb2[c]*nb2[c];
-      nb2[c] = 0;
-    }
-
-    b1[c] = nb1[c];
-    f2[c] = nf2[c];
-    b2[c] = nb2[c];
-  }
-
-  //quality = 0;
-  if (quality == 0) {
-    for (int c=0; c<3; c++) {
-      int diff = f1[c]-f0[c];
-      quality += diff*diff;
-      
-      diff = f2[c]-f0[c];
-      quality += diff*diff;
-      
-      diff = b1[c]-b0[c];
-      quality += diff*diff;
-      
-      diff = b2[c]-b0[c];
-      quality += diff*diff;
-    }
-      
-    int diff = a1[0]-a0[0];
-    quality += diff*diff;
-
-    diff = a2[0]-a0[0];
-    quality += diff*diff;
-  }
-  return quality;
-}
-
-// a1 and f1 unknown
-void optimize(unsigned char* f0, unsigned char* f1, unsigned char* f2,
-    unsigned char* b0, unsigned char* b1, unsigned char* b2,
-    unsigned char* a0, unsigned char* a1, unsigned char* a2,
-    unsigned char* c1, unsigned char* c2,
-    double up0, double up1, double up2) {
-
-  unsigned char best_f1[3] = {0};
-  unsigned char best_a = 0;
-
-  int best_result = INT_MIN;
-  for (a1[0] = 0; a1[0] < 251; a1[0]+=4) {
-    cout << (int)a1[0] << "/255" << endl;
-    for (f1[0] = 0; f1[0] < 251; f1[0]+=4) {
-      for (f1[1] = 0; f1[1] < 251; f1[1]+=4) {
-        for (f1[2] = 0; f1[2] < 251; f1[2]+=4) {
-          int result = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2, up0, up1, up2);
-          if (best_result < 0) {
-            if (result > best_result) {
-              best_result = result;
-              best_a = a1[0];
-              for (int c=0; c<3; c++) {
-                best_f1[c] = f1[c];
-              }
-#ifdef DEBUG_OPTIMIZE_LOOP
-              cout << "New best result: " << best_result << "\n";
-              cout << "a1: " << (int)a1[0] << "\n";
-              cout << "a2: " << (int)a2[0] << "\n";
-              cout << "f1\tf2\tb1\tb2\n";
-              for (int c=0; c<3; c++) {
-                cout << (int)f1[c] << "\t" << (int)f2[c] << "\t" << (int)b1[c] << "\t" <<
-                  (int)b2[c] << "\n";
-              }
-#endif
-            }
-          } else {
-            if (result > 0 && result < best_result) {
-              best_result = result;
-              best_a = a1[0];
-              for (int c=0; c<3; c++) {
-                best_f1[c] = f1[c];
-              }
-#ifdef DEBUG_OPTIMIZE_LOOP
-              cout << "New best result: " << best_result << "\n";
-              cout << "a1: " << (int)a1[0] << "\n";
-              cout << "a2: " << (int)a2[0] << "\n";
-              cout << "f1\tf2\tb1\tb2\n";
-              for (int c=0; c<3; c++) {
-                cout << (int)f1[c] << "\t" << (int)f2[c] << "\t" << (int)b1[c] << "\t" <<
-                  (int)b2[c] << "\n";
-              }
-#endif
-            }
-          }
-        }
-      }
-    }
-  }
-
-  /*f1[0] = f0[0];
-  f1[1] = f0[1];
-  f1[2] = f0[2];
-  a1[0] = 128;*/
-
-      /*
-    f1[0] = rand()%256;
-    f1[1] = rand()%256;
-    f1[2] = rand()%256;
-    a1[0] = rand()%256;
-
-    for (int i=0; i<100; i++) {
-      // alpha
-      int qplus, qminus;
-      if (a1[0] != 255)
-        a1[0]++;
-      qplus = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
-      if (a1[0] != 255)
-        a1[0]--;
-
-      if (a1[0] != 0)
-        a1[0]--;
-      qminus = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
-      if (a1[0] != 0)
-        a1[0]++;
-
-      cout << (int)f1[0] << "/" << (int)f1[1] << "/" << (int)f1[2] << "/" << (int)a1[0]+1 << ": " << qplus << endl;
-
-      if (qplus > 0)
-        if (qminus > 0)
-          if (qplus < qminus)
-            a1[0]++;
-          else
-            a1[0]--;
-        else
-          a1[0]++;
-      else
-        if (qminus > 0)
-          a1[0]--;
-        else
-          if (qminus > qplus)
-            a1[0]--;
-          else
-            a1[0]++;
-
-      for (int c=0; c<3; c++) {
-        int qplus, qminus;
-        if (f1[c] != 255) {
-          f1[c]++;
-          qplus = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
-          f1[c]--;
-        } else {
-          qplus = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
-        }
-
-        if (f1[c] != 0) {
-          f1[c]--;
-          qminus = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
-          f1[c]++;
-        } else {
-          qminus = solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2);
-        }
-
-        if (qplus > 0) {
-          if (qminus > 0) {
-            if (qplus < qminus) {
-              if (f1[c] != 255)
-                f1[c]++;
-            } else {
-              if (f1[c] != 0)
-                f1[c]--;
-            }
-          } else {
-            if (f1[c] != 255)
-              f1[c]++;
-          }
-        } else {
-          if (qminus > 0) {
-            if (f1[c] != 0)
-              f1[c]--;
-          } else {
-            if (qminus > qplus) {
-              if (f1[c] != 0)
-                f1[c]--;
-            } else {
-              if (f1[c] != 255)
-                f1[c]++;
-            }
-          }
-        }
-      }
-    }
-  }*/
-  
-  a1[0] = best_a;
-  for (int c=0; c<3; c++) {
-    f1[c] = best_f1[c];
-  }
-  solve_equations(f0, f1, f2, b0, b1, b2, a0, a1, a2, c1, c2, up0, up1, up2);
-
-  //cout << "alpha 0/1/2: " << (int)a0[0] << "/" << (int)a1[0] << "/" << (int)a2[0] << "\n";
 }
 
 double projection (double F[3], double B[3], double C[3], double* alpha_pointer) {
@@ -413,40 +131,40 @@ int main() {
   int raise = 9;
 
   double* mask = load_image("trimap.pnm", width, height, 1);
-  double* originals[raise+1];
 
-  double* new_alphas[raise+1];
-  double* fbs[raise+1][2];
-  double* ps[raise+1][2];
-  double* new_colors[raise+1][2];
+  double* original_list[raise+1];
+  double* color_list[raise+1][2];
+  double* portion_list[raise+1][2];
+  double* final_list[raise+1][2];
+  double* alpha_list[raise+1];
 
-  originals[9] = load_image("test.ppm", width, height, 3);
+  original_list[9] = load_image("test.ppm", width, height, 3);
   for (int b=0; b<2; b++) {
-    fbs[9][b] = new double[width*height*3]();
-    ps[9][b] = new double[width*height]();
+    color_list[9][b] = new double[width*height*3]();
+    portion_list[9][b] = new double[width*height]();
   }
 
   for (int y=0; y<height; y++) {
     for (int x=0; x<width; x++) {
       if (mask[width*y+x] == 1) {
-        ps[9][0][width*y+x] = 1;
+        portion_list[9][0][width*y+x] = 1;
         for (int c=0; c<3; c++) {
-          fbs[9][0][(width*y+x)*3+c] =
-            originals[9][(width*y+x)*3+c];
+          color_list[9][0][(width*y+x)*3+c] =
+            original_list[9][(width*y+x)*3+c];
         }
       } else if (mask[width*y+x] == 0) {
-        ps[9][1][width*y+x] = 1;
+        portion_list[9][1][width*y+x] = 1;
         for (int c=0; c<3; c++) {
-          fbs[9][1][(width*y+x)*3+c] =
-            originals[9][(width*y+x)*3+c];
+          color_list[9][1][(width*y+x)*3+c] =
+            original_list[9][(width*y+x)*3+c];
         }
       }
     }
   }
 
-  save_image(RESULTS "originals_9.ppm", width, height, 3, originals[9]);
-  save_image(RESULTS "foregrounds_9.ppm", width, height, 3, fbs[9][0]);
-  save_image(RESULTS "backgrounds_9.ppm", width, height, 3, fbs[9][1]);
+  save_image(RESULTS "originals_9.ppm", width, height, 3, original_list[9]);
+  save_image(RESULTS "foregrounds_9.ppm", width, height, 3, color_list[9][0]);
+  save_image(RESULTS "backgrounds_9.ppm", width, height, 3, color_list[9][1]);
 
   while (raise > 0) {
     raise--;
@@ -455,10 +173,10 @@ int main() {
     height = height/2;
     width = width/2;
 
-    originals[raise] = new double[width*height*3]();
+    original_list[raise] = new double[width*height*3]();
     for (int b=0; b<2; b++) {
-      fbs[raise][b] = new double[width*height*3]();
-      ps[raise][b] =  new double[width*height]();
+      color_list[raise][b] = new double[width*height*3]();
+      portion_list[raise][b] =  new double[width*height]();
     }
   
     for (int y=0; y<height; y++) {
@@ -466,8 +184,8 @@ int main() {
         for (int xdiff = 0; xdiff <= 1; xdiff++) {
           for (int ydiff = 0; ydiff <= 1; ydiff++) {
             for (int b=0; b<2; b++) {
-              ps[raise][b][y*width+x] +=
-                ps[raise+1][b][(2*y+ydiff)*(2*width)+2*x+xdiff]/4;
+              portion_list[raise][b][y*width+x] +=
+                portion_list[raise+1][b][(2*y+ydiff)*(2*width)+2*x+xdiff]/4;
             }
           }
         }
@@ -475,15 +193,15 @@ int main() {
         for (int xdiff = 0; xdiff <= 1; xdiff++) {
           for (int ydiff = 0; ydiff <= 1; ydiff++) {
             for (int c=0; c<3; c++) {
-              originals[raise][(y*width+x)*3+c] +=
-                originals[raise+1][((2*y+ydiff)*(2*width)+2*x+xdiff)*3+c]/4;
+              original_list[raise][(y*width+x)*3+c] +=
+                original_list[raise+1][((2*y+ydiff)*(2*width)+2*x+xdiff)*3+c]/4;
 
               for (int b=0; b<2; b++) {
-                double new_ps = ps[raise][b][y*width+x];
+                double new_ps = portion_list[raise][b][y*width+x];
                 if (new_ps > 0)
-                  fbs[raise][b][(y*width+x)*3+c] +=
-                    fbs[raise+1][b][((2*y+ydiff)*(2*width)+2*x+xdiff)*3+c]
-                    *ps[raise+1][b][(2*y+ydiff)*(2*width)+2*x+xdiff]
+                  color_list[raise][b][(y*width+x)*3+c] +=
+                    color_list[raise+1][b][((2*y+ydiff)*(2*width)+2*x+xdiff)*3+c]
+                    *portion_list[raise+1][b][(2*y+ydiff)*(2*width)+2*x+xdiff]
                     /new_ps/4;
               }
             }
@@ -494,13 +212,13 @@ int main() {
 
     static char buffer[100];
     snprintf(buffer, 100, RESULTS "originals_%i.ppm", raise);
-    save_image(buffer, width, height, 3, originals[raise]);
+    save_image(buffer, width, height, 3, original_list[raise]);
     
     snprintf(buffer, 100, RESULTS "foregrounds_%i.ppm", raise);
-    save_image(buffer, width, height, 3, fbs[raise][0]);
+    save_image(buffer, width, height, 3, color_list[raise][0]);
     
     snprintf(buffer, 100, RESULTS "backgrounds_%i.ppm", raise);
-    save_image(buffer, width, height, 3, fbs[raise][1]);
+    save_image(buffer, width, height, 3, color_list[raise][1]);
   }
   
 
@@ -509,36 +227,38 @@ int main() {
   width = 1;
   height = 1;
 
-  new_alphas[0] = new double[1];
+  alpha_list[0] = new double[1];
   for (int b=0; b<2; b++) {
-    new_colors[0][b] = new double[3];
+    final_list[0][b] = new double[3];
     for (int c=0; c<3; c++) {
-      new_colors[0][b][c] = fbs[0][b][c];
+      final_list[0][b][c] = color_list[0][b][c];
     }
   }
 
   // Calculate alpha
   double merged_point[3];
   for (int c=0; c<3; c++) {
-    merged_point[c] = (originals[0][c]
-      -ps[0][0][0]*fbs[0][0][c]
-      -ps[0][1][0]*fbs[0][1][c])
-      /(1-ps[0][0][0]-ps[0][1][0]);
+    double pf = portion_list[0][0][0];
+    double pb = portion_list[0][1][0];
+    merged_point[c] = (original_list[0][c]
+      -pf*color_list[0][0][c]
+      -pb*color_list[0][1][c])
+      /(1-pf-pb);
   }
 
-  projection(new_colors[0][0], new_colors[0][1],
-      merged_point, &(new_alphas[0][0]));
+  projection(final_list[0][0], final_list[0][1],
+      merged_point, &(alpha_list[0][0]));
 
-  save_image(RESULTS "new_foregrounds_0.ppm", 1, 1, 3, new_colors[0][0]);
-  save_image(RESULTS "new_backgrounds_0.ppm", 1, 1, 3, new_colors[0][1]);
-  save_image(RESULTS "new_alphas_0.ppm", 1, 1, 1, new_alphas[0]);
+  save_image(RESULTS "new_foregrounds_0.ppm", 1, 1, 3, final_list[0][0]);
+  save_image(RESULTS "new_backgrounds_0.ppm", 1, 1, 3, final_list[0][1]);
+  save_image(RESULTS "new_alphas_0.ppm", 1, 1, 1, alpha_list[0]);
 
 
   double final[3];
   for (int c=0; c<3; c++) {
-    final[c] = ps[0][0][0]*fbs[0][0][c]
-      +new_colors[0][0][c]*new_alphas[0][0]
-      *(1-ps[0][0][0]-ps[0][1][0]);
+    final[c] = portion_list[0][0][0]*color_list[0][0][c]
+      +final_list[0][0][c]*alpha_list[0][0]
+      *(1-portion_list[0][0][0]-portion_list[0][1][0]);
   }
   save_image(RESULTS "final_0.ppm", 1, 1, 3, final);
 
@@ -549,9 +269,9 @@ int main() {
     raise++;
 
     for (int b=0; b<2; b++) {
-      new_colors[raise][b] = new double[width*height*3];
+      final_list[raise][b] = new double[width*height*3];
     }
-    new_alphas[raise] = new double[width*height];
+    alpha_list[raise] = new double[width*height];
 
     for (int y=0; y<height; y+=2) {
       for (int x=0; x<width; x+=2) {
@@ -565,14 +285,14 @@ int main() {
                   && x/2 + bxdiff < width/2 && y + bydiff < height/2))
               continue;
 
-            fbt[0] = &(new_colors[raise-1][1][((y/2+bydiff)*width/2+(x/2+bxdiff))*3]);
+            fbt[0] = &(final_list[raise-1][1][((y/2+bydiff)*width/2+(x/2+bxdiff))*3]);
             for (int fxdiff=-3; fxdiff<=3; fxdiff++) {
               for (int fydiff=-3; fydiff<=3; fydiff++) {
                 if (!(x/2 + fxdiff >= 0 && y + fydiff >= 0
                       && x/2 + fxdiff < width/2 && y + fydiff < height/2))
                   continue;
 
-                fbt[1] = &(new_colors[raise-1][0]
+                fbt[1] = &(final_list[raise-1][0]
                     [((y/2+fydiff)*width/2+(x/2+fxdiff))*3]);
 
                 for (int nx=0; nx<2; nx++) {
@@ -583,14 +303,14 @@ int main() {
                     for (int c=0; c<3; c++) {
                       for (int b=0; b<2; b++){
                         // TODO fix verhältnis?
-                        double cur_ps = ps[raise][b][(y*ny)*width+x+nx];
-                        fbs_merged[b][c] = fbs[raise][b][((y+ny)*width+x+nx)*3+c]
+                        double cur_ps = portion_list[raise][b][(y*ny)*width+x+nx];
+                        fbs_merged[b][c] = color_list[raise][b][((y+ny)*width+x+nx)*3+c]
                           * cur_ps + (1 - cur_ps)*fbt[b][c];
                       }
                     }
 
                     double score = projection(fbs_merged[0], fbs_merged[1],
-                        &(originals[raise][((y+ny)*width+x+nx)*3]), &proj_a);
+                        &(original_list[raise][((y+ny)*width+x+nx)*3]), &proj_a);
 
                     if (score < best_score[nx][ny]
                         || best_score[nx][ny] == -1) {
@@ -612,16 +332,16 @@ int main() {
           for (int ny=0; ny<2; ny++) {
             for (int b=0; b<2; b++) {
               for (int c=0; c<3; c++) {
-                double cur_ps = ps[raise][b][(y+ny)*width+x+nx];
-                new_colors[raise][b][((y+ny)*width+x+nx)*3+c] =
+                double cur_ps = portion_list[raise][b][(y+ny)*width+x+nx];
+                final_list[raise][b][((y+ny)*width+x+nx)*3+c] =
                   ((best_fbs[nx][ny][b][c]
-                  + fbs[raise-1][b][(y/2*width/2+x/2)*3+c])/2)*(1-cur_ps)
-                  + fbs[raise][b][((y+ny)*width+x+nx)]*cur_ps;
+                  + color_list[raise-1][b][(y/2*width/2+x/2)*3+c])/2)*(1-cur_ps)
+                  + color_list[raise][b][((y+ny)*width+x+nx)]*cur_ps;
               }
-              projection(&(new_colors[raise][0][((y+ny)*width+x+nx)*3]),
-                  &(new_colors[raise][1][((y+ny)*width+x+nx)*3]),
-                  &(originals[raise][((y*ny)*width+x+nx)*3]),
-                  &(new_alphas[raise][((y*ny)*width+x+nx)*3]));
+              projection(&(final_list[raise][0][((y+ny)*width+x+nx)*3]),
+                  &(final_list[raise][1][((y+ny)*width+x+nx)*3]),
+                  &(original_list[raise][((y*ny)*width+x+nx)*3]),
+                  &(alpha_list[raise][((y*ny)*width+x+nx)*3]));
             }
           }
         }
@@ -634,10 +354,10 @@ int main() {
     for (int y=0; y<height; y++) {
       for (int x=0; x<width; x++) {
         for (int c=0; c<3; c++) {
-          tmp[(y*width+x)*3+c] = ps[raise][0][y*width+1]
-            *fbs[raise][0][(y*width+1)*3+c]
-            +new_colors[raise][0][(y*width+x)*3+c]*new_alphas[raise][(y*width+x)]
-            *(1-ps[raise][0][y*width+x]-ps[raise][1][y*width+x]);
+          tmp[(y*width+x)*3+c] = portion_list[raise][0][y*width+1]
+            *color_list[raise][0][(y*width+1)*3+c]
+            +final_list[raise][0][(y*width+x)*3+c]*alpha_list[raise][(y*width+x)]
+            *(1-portion_list[raise][0][y*width+x]-portion_list[raise][1][y*width+x]);
         }
       }
     }
@@ -645,13 +365,13 @@ int main() {
     delete[] tmp;
 
     snprintf(buffer, 100, RESULTS "new_foregrounds_%i.ppm", raise);
-    save_image(buffer, width, height, 3, new_colors[raise][0]);
+    save_image(buffer, width, height, 3, final_list[raise][0]);
     
     snprintf(buffer, 100, RESULTS "new_backgrounds_%i.ppm", raise);
-    save_image(buffer, width, height, 3, new_colors[raise][1]);
+    save_image(buffer, width, height, 3, final_list[raise][1]);
     
     snprintf(buffer, 100, RESULTS "new_alphas_%i.ppm", raise);
-    save_image(buffer, width, height, 1, new_alphas[raise]);
+    save_image(buffer, width, height, 1, alpha_list[raise]);
     
   }
 /*
