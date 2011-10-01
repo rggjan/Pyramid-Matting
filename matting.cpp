@@ -350,7 +350,11 @@ int main() {
             // Set test background
             int old_id_b = (y/2+bydiff)*width/2+x/2+bxdiff;
             int old_id3_b = old_id_b*3;
-            test_color[0] = &(old_final[0][old_id3_b]);
+             
+            if (old_mask[old_id_b] == 1 || old_mask[old_id_b] == 0)
+              continue;
+
+            test_color[1] = &(old_final[1][old_id3_b]);
 
             for (int fxdiff=-f_radius; fxdiff<=f_radius; fxdiff++) {
               for (int fydiff=-f_radius; fydiff<=f_radius; fydiff++) {
@@ -362,7 +366,11 @@ int main() {
                 // Set test foreground
                 int old_id_f = (y/2+fydiff)*width/2+x/2+fxdiff;
                 int old_id3_f = old_id_f*3;
-                test_color[1] = &(old_final[1][old_id3_f]);
+
+                if (old_mask[old_id_f] == 1 || old_mask[old_id_f] == 0)
+                  continue;
+
+                test_color[0] = &(old_final[0][old_id3_f]);
 
                 for (int n=0; n<4; n++) {
                   int idn = ((y+(n&1))*width)+x+n/2;
@@ -413,9 +421,11 @@ int main() {
 
               final[b][idn3+c] = ratio*color[b][idn3+c]+
                 (1-ratio)*
-                (old_final[b][old_id3+c] + best_color[n][b][c])/2;
+                best_color[n][b][c];
             }
           }
+
+
           projection(&(final[0][idn3]),
                      &(final[1][idn3]),
                      &(original[idn3]),
