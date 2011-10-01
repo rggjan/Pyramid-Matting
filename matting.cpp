@@ -135,14 +135,14 @@ int main() {
   int height = 512;
   int raise = 9;
 
-  double* mask = load_image("trimap.pnm", width, height, 1);
-
   double* original_list[raise+1];
+  double* mask_list[raise+1];
   double* color_list[raise+1][2];
   double* portion_list[raise+1][2];
   double* final_list[raise+1][2];
   double* alpha_list[raise+1];
 
+  double* mask = load_image("trimap.pnm", width, height, 1);
   double* original = load_image("test.ppm", width, height, 3);
   double* foreground = new double[width*height*3]();
   double* portion_foreground = new double[width*height]();
@@ -173,10 +173,12 @@ int main() {
   portion_list[9][0] = portion_foreground;
   color_list[9][1] = background;
   portion_list[9][1] = portion_background;
+  mask_list[9] = mask;
 
   save_image(RESULTS "originals_9.ppm", width, height, 3, original_list[9]);
   save_image(RESULTS "foregrounds_9.ppm", width, height, 3, color_list[9][0]);
   save_image(RESULTS "backgrounds_9.ppm", width, height, 3, color_list[9][1]);
+  save_image(RESULTS "masks_9.ppm", width, height, 1, mask_list[9]);
 
   while (raise > 0) {
     raise--;
@@ -186,11 +188,14 @@ int main() {
     width = width/2;
 
     original_list[raise] = new double[width*height*3]();
+    mask_list[raise] = new double[width*height]();
     for (int b=0; b<2; b++) {
       color_list[raise][b] = new double[width*height*3]();
       portion_list[raise][b] =  new double[width*height]();
     }
 
+    double* mask = mask_list[raise];
+    double* old_mask = mask_list[raise+1];
     double* original = original_list[raise];
     double* old_original = original_list[raise+1];
     double* color[2] = {color_list[raise][0], color_list[raise][1]};
@@ -204,6 +209,12 @@ int main() {
         int id = y*width+x;
         for (int n=0; n<4; n++) {
           int idn = (2*y+(n&1))*(2*width)+2*x+(n/2);
+          if (n == 0)
+            mask[id] = old_mask[idn];
+          else
+            if (mask[id] != old_mask[idn])
+              mask[id] = 0.5;
+
           for (int b=0; b<2; b++) {
             portion[b][id] += old_portion[b][idn]/4;
           }
@@ -237,6 +248,9 @@ int main() {
     
     snprintf(buffer, 100, RESULTS "backgrounds_%i.ppm", raise);
     save_image(buffer, width, height, 3, color[1]);
+  
+    snprintf(buffer, 100, RESULTS "masks_%i.ppm", raise);
+    save_image(buffer, width, height, 1, mask);
   }
   
 
@@ -311,13 +325,14 @@ int main() {
       for (int x=0; x<width; x+=2) {
         int old_id = (y/2*width/2+x/2);
         int old_id3 = old_id*3;
+        int id = y*width+x;
 
         const double* best_color[4][2];
         double best_score[4] = {INT_MAX, INT_MAX, INT_MAX, INT_MAX};
 
         double* test_color[2];
 
-        const int f_radius = 3;
+        const int f_radius = 2;
         const int b_radius = f_radius;
         for (int bxdiff=-b_radius; bxdiff<=b_radius; bxdiff++) {
           for (int bydiff=-b_radius; bydiff<=b_radius; bydiff++) {
@@ -349,13 +364,13 @@ int main() {
 
                   double test_merged[2][3];
                   double proj_a;
+                  double sum_portion = portion[0][idn] + portion[1][idn];
 
                   for (int c=0; c<3; c++) {
                     for (int b=0; b<2; b++){
-                      // TODO fix verhältnis?
-                      double cur_portion = portion[b][idn];
-                      test_merged[b][c] = cur_portion*color[b][idn3+c]
-                        + (1-cur_portion)*test_color[b][c];
+                      double ratio = portion[b][idn] / (portion[b][idn]+(1-sum_portion)/2);
+                      test_merged[b][c] = ratio*color[b][idn3+c]
+                        + (1-ratio)*test_color[b][c];
                     }
                   }
 
@@ -377,12 +392,14 @@ int main() {
         for (int n=0; n<4; n++) {
           int idn = ((y+(n&1))*width)+x+n/2;
           int idn3 = idn*3;
+          double sum_portion = portion[0][idn] + portion[1][idn];
+
           for (int b=0; b<2; b++) {
             for (int c=0; c<3; c++) {
-              double cur_portion = portion[b][idn];
+              double ratio = portion[b][idn] / (portion[b][idn]+(1-sum_portion)/2);
 
-              final[b][idn3+c] = cur_portion*color[b][idn3+c]+
-                (1-cur_portion)*
+              final[b][idn3+c] = ratio*color[b][idn3+c]+
+                (1-ratio)*
                 (old_final[b][old_id3+c] + best_color[n][b][c])/2;
             }
           }
