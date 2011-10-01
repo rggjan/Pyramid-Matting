@@ -317,7 +317,7 @@ int main() {
 
         double* test_color[2];
 
-        const int f_radius = 1;
+        const int f_radius = 3;
         const int b_radius = f_radius;
         for (int bxdiff=-b_radius; bxdiff<=b_radius; bxdiff++) {
           for (int bydiff=-b_radius; bydiff<=b_radius; bydiff++) {
@@ -334,7 +334,7 @@ int main() {
             for (int fxdiff=-f_radius; fxdiff<=f_radius; fxdiff++) {
               for (int fydiff=-f_radius; fydiff<=f_radius; fydiff++) {
                 // Check if inside old image
-                if (!(x/2 + fxdiff >= 0 && y + fydiff >= 0
+                if (!(x/2 + fxdiff >= 0 && y/2 + fydiff >= 0
                       && x/2 + fxdiff < width/2 && y/2 + fydiff < height/2))
                   continue;
 
