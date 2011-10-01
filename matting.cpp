@@ -9,6 +9,8 @@
 
 using namespace std;
 
+#define ID(x, y) ((y*width)+(x))
+
 double*
 load_image (const char* filename, int dimx, int dimy, int num_colors) {
   unsigned char* data = new unsigned char[dimx*dimy*num_colors];
@@ -138,29 +140,36 @@ int main() {
   double* final_list[raise+1][2];
   double* alpha_list[raise+1];
 
-  original_list[9] = load_image("test.ppm", width, height, 3);
-  for (int b=0; b<2; b++) {
-    color_list[9][b] = new double[width*height*3]();
-    portion_list[9][b] = new double[width*height]();
-  }
+  double* original = load_image("test.ppm", width, height, 3);
+  double* foreground = new double[width*height*3]();
+  double* portion_foreground = new double[width*height]();
+  double* background = new double[width*height*3]();
+  double* portion_background = new double[width*height]();
 
   for (int y=0; y<height; y++) {
     for (int x=0; x<width; x++) {
-      if (mask[width*y+x] == 1) {
-        portion_list[9][0][width*y+x] = 1;
+      int id=y*width+x;
+      if (mask[id] == 1) {
+        portion_foreground[id] = 1;
         for (int c=0; c<3; c++) {
-          color_list[9][0][(width*y+x)*3+c] =
-            original_list[9][(width*y+x)*3+c];
+          int idc = (width*y+x)*3+c;
+          foreground[idc] = original[idc];
         }
-      } else if (mask[width*y+x] == 0) {
-        portion_list[9][1][width*y+x] = 1;
+      } else if (mask[id] == 0) {
+        portion_background[id] = 1;
         for (int c=0; c<3; c++) {
-          color_list[9][1][(width*y+x)*3+c] =
-            original_list[9][(width*y+x)*3+c];
+          int idc = (width*y+x)*3+c;
+          background[idc] = original[idc];
         }
       }
     }
   }
+  
+  original_list[9] = original;
+  color_list[9][0] = foreground;
+  portion_list[9][0] = portion_foreground;
+  color_list[9][1] = background;
+  portion_list[9][1] = portion_background;
 
   save_image(RESULTS "originals_9.ppm", width, height, 3, original_list[9]);
   save_image(RESULTS "foregrounds_9.ppm", width, height, 3, color_list[9][0]);
