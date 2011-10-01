@@ -73,7 +73,10 @@ save_image (const char* filename, int dimx, int dimy, int num_colors,
   delete[] char_data;
 }
 
-double projection (double F[3], double B[3], double C[3], double* alpha_pointer) {
+double projection (const double F[3],
+                   const double B[3],
+                   const double C[3],
+                   double* alpha_pointer) {
   double BF[3];
   double BC[3];
   double dot_BF_BF = 0;
@@ -278,20 +281,20 @@ int main() {
   save_image(RESULTS "final_0.ppm", 1, 1, 3, final);
 
   while (raise < 9) {
-    cout << "============= raise: " << raise << "=============" << endl;
     width *= 2;
     height *= 2;
     raise++;
+    cout << "============= raise: " << raise << "=============" << endl;
 
-    double* original = original_list[raise];
-    double* old_original = original_list[raise-1];
+    const double* original = original_list[raise];
+    const double* old_original = original_list[raise-1];
 
-    double* color[2] = {color_list[raise][0], color_list[raise][1]};
-    double* old_color[2] = {color_list[raise-1][0], color_list[raise-1][1]};
+    const double* color[2] = {color_list[raise][0], color_list[raise][1]};
+    const double* old_color[2] = {color_list[raise-1][0], color_list[raise-1][1]};
 
-    double* portion[2] = {portion_list[raise][0], portion_list[raise][1]};
-    double* old_portion[2] = {portion_list[raise-1][0],
-                              portion_list[raise-1][1]};
+    const double* portion[2] = {portion_list[raise][0], portion_list[raise][1]};
+    const double* old_portion[2] = {portion_list[raise-1][0],
+      portion_list[raise-1][1]};
 
     alpha_list[raise] = new double[width*height];
     for (int b=0; b<2; b++) {
@@ -308,51 +311,61 @@ int main() {
       for (int x=0; x<width; x+=2) {
         int old_id = (y/2*width/2+x/2);
         int old_id3 = old_id*3;
-/*        double best_fbs[2][2][2][3];
-        double best_score[2][2] = {{-1, -1}, {-1, -1}};
-        
-        double* fbt[2];
-        for (int bxdiff=-3; bxdiff<=3; bxdiff++) {
-          for (int bydiff=-3; bydiff<=3; bydiff++) {
+
+        const double* best_color[4][2];
+        double best_score[4] = {INT_MAX, INT_MAX, INT_MAX, INT_MAX};
+
+        double* test_color[2];
+
+        const int f_radius = 1;
+        const int b_radius = f_radius;
+        for (int bxdiff=-b_radius; bxdiff<=b_radius; bxdiff++) {
+          for (int bydiff=-b_radius; bydiff<=b_radius; bydiff++) {
+            // Check if inside old image
             if (!(x/2 + bxdiff >= 0 && y/2 + bydiff >= 0
-                  && x/2 + bxdiff < width/2 && y + bydiff < height/2))
+                  && x/2 + bxdiff < width/2 && y/2 + bydiff < height/2))
               continue;
 
-            fbt[0] = &(final_list[raise-1][1][((y/2+bydiff)*width/2+(x/2+bxdiff))*3]);
-            for (int fxdiff=-3; fxdiff<=3; fxdiff++) {
-              for (int fydiff=-3; fydiff<=3; fydiff++) {
+            // Set test background
+            int old_id_b = (y/2+bydiff)*width/2+x/2+bxdiff;
+            int old_id3_b = old_id_b*3;
+            test_color[0] = &(old_final[0][old_id3_b]);
+
+            for (int fxdiff=-f_radius; fxdiff<=f_radius; fxdiff++) {
+              for (int fydiff=-f_radius; fydiff<=f_radius; fydiff++) {
+                // Check if inside old image
                 if (!(x/2 + fxdiff >= 0 && y + fydiff >= 0
-                      && x/2 + fxdiff < width/2 && y + fydiff < height/2))
+                      && x/2 + fxdiff < width/2 && y/2 + fydiff < height/2))
                   continue;
 
-                fbt[1] = &(final_list[raise-1][0]
-                    [((y/2+fydiff)*width/2+(x/2+fxdiff))*3]);
+                // Set test foreground
+                int old_id_f = (y/2+fydiff)*width/2+x/2+fxdiff;
+                int old_id3_f = old_id_f*3;
+                test_color[1] = &(old_final[1][old_id3_f]);
 
-                for (int nx=0; nx<2; nx++) {
-                  for (int ny=0; ny<2; ny++) {
-                    double fbs_merged[2][3];
-                    double proj_a;
+                for (int n=0; n<4; n++) {
+                  int idn = ((y+(n&1))*width)+x+n/2;
+                  int idn3 = idn*3;
 
-                    for (int c=0; c<3; c++) {
-                      for (int b=0; b<2; b++){
-                        // TODO fix verhältnis?
-                        double cur_ps = portion_list[raise][b][(y*ny)*width+x+nx];
-                        fbs_merged[b][c] = color_list[raise][b][((y+ny)*width+x+nx)*3+c]
-                          * cur_ps + (1 - cur_ps)*fbt[b][c];
-                      }
+                  double test_merged[2][3];
+                  double proj_a;
+
+                  for (int c=0; c<3; c++) {
+                    for (int b=0; b<2; b++){
+                      // TODO fix verhältnis?
+                      double cur_portion = portion[b][idn];
+                      test_merged[b][c] = cur_portion*color[b][idn3+c]
+                        + (1-cur_portion)*test_color[b][c];
                     }
+                  }
 
-                    double score = projection(fbs_merged[0], fbs_merged[1],
-                        &(original_list[raise][((y+ny)*width+x+nx)*3]), &proj_a);
+                  double score = projection(test_merged[0], test_merged[1],
+                      &(original[idn3]), &proj_a);
 
-                    if (score < best_score[nx][ny]
-                        || best_score[nx][ny] == -1) {
-                      best_score[nx][ny] = score;
-                      for (int c=0; c<3; c++) {
-                        for (int b=0; b<2; b++) {
-                          best_fbs[nx][ny][b][c] = fbt[b][c];
-                        }
-                      }
+                  if (score < best_score[n]) {
+                    best_score[n] = score;
+                    for (int b=0; b<2; b++) {
+                      best_color[n][b] = test_color[b];
                     }
                   }
                 }
@@ -360,7 +373,7 @@ int main() {
             }
           }
         }
-*/
+        
         for (int n=0; n<4; n++) {
           int idn = ((y+(n&1))*width)+x+n/2;
           int idn3 = idn*3;
@@ -369,7 +382,8 @@ int main() {
               double cur_portion = portion[b][idn];
 
               final[b][idn3+c] = cur_portion*color[b][idn3+c]+
-                (1-cur_portion)*old_final[b][old_id3+c];
+                (1-cur_portion)*
+                (old_final[b][old_id3+c] + best_color[n][b][c])/2;
             }
           }
           projection(&(final[0][idn3]),
