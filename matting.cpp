@@ -259,9 +259,9 @@ int main() {
   width = 1;
   height = 1;
 
-  alpha_list[0] = new double[1];
+  alpha_list[0] = new double[1]();
   for (int b=0; b<2; b++) {
-    final_list[0][b] = new double[3];
+    final_list[0][b] = new double[3]();
     for (int c=0; c<3; c++) {
       final_list[0][b][c] = color_list[0][b][c];
     }
@@ -310,9 +310,9 @@ int main() {
     const double* old_portion[2] = {portion_list[raise-1][0],
       portion_list[raise-1][1]};
 
-    alpha_list[raise] = new double[width*height];
+    alpha_list[raise] = new double[width*height]();
     for (int b=0; b<2; b++) {
-      final_list[raise][b] = new double[width*height*3];
+      final_list[raise][b] = new double[width*height*3]();
     }
 
     double* alpha = alpha_list[raise];
@@ -413,7 +413,7 @@ int main() {
 
     static char buffer[100];
     snprintf(buffer, 100, RESULTS "final_%i.ppm", raise);
-    double *tmp = new double[width*height*3];
+    double *tmp = new double[width*height*3]();
     for (int y=0; y<height; y++) {
       for (int x=0; x<width; x++) {
         int id = y*width+x;
