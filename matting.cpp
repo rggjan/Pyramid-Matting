@@ -310,6 +310,9 @@ int main() {
     const double* old_portion[2] = {portion_list[raise-1][0],
       portion_list[raise-1][1]};
 
+    const double* mask = mask_list[raise];
+    const double* old_mask = mask_list[raise-1];
+
     alpha_list[raise] = new double[width*height]();
     for (int b=0; b<2; b++) {
       final_list[raise][b] = new double[width*height*3]();
@@ -326,6 +329,9 @@ int main() {
         int old_id = (y/2*width/2+x/2);
         int old_id3 = old_id*3;
         int id = y*width+x;
+
+        if (old_mask[old_id] == 1 || old_mask[old_id] == 0)
+          continue;
 
         const double* best_color[4][2];
         double best_score[4] = {INT_MAX, INT_MAX, INT_MAX, INT_MAX};
@@ -360,6 +366,9 @@ int main() {
 
                 for (int n=0; n<4; n++) {
                   int idn = ((y+(n&1))*width)+x+n/2;
+                  if (mask[idn] == 1 || mask[idn] == 0)
+                    continue;
+
                   int idn3 = idn*3;
 
                   double test_merged[2][3];
@@ -391,6 +400,10 @@ int main() {
         
         for (int n=0; n<4; n++) {
           int idn = ((y+(n&1))*width)+x+n/2;
+
+          if (mask[idn] == 1 || mask[idn] == 0)
+            continue;
+
           int idn3 = idn*3;
           double sum_portion = portion[0][idn] + portion[1][idn];
 
