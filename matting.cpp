@@ -187,32 +187,38 @@ int main() {
       color_list[raise][b] = new double[width*height*3]();
       portion_list[raise][b] =  new double[width*height]();
     }
+
+    double* original = original_list[raise];
+    double* old_original = original_list[raise+1];
+    double* color[2] = {color_list[raise][0], color_list[raise][1]};
+    double* old_color[2] = {color_list[raise+1][0], color_list[raise+1][1]};
+    double* portion[2] = {portion_list[raise][0], portion_list[raise][1]};
+    double* old_portion[2] = {portion_list[raise+1][0],
+                              portion_list[raise+1][1]};
   
     for (int y=0; y<height; y++) {
       for (int x=0; x<width; x++) {
-        for (int xdiff = 0; xdiff <= 1; xdiff++) {
-          for (int ydiff = 0; ydiff <= 1; ydiff++) {
-            for (int b=0; b<2; b++) {
-              portion_list[raise][b][y*width+x] +=
-                portion_list[raise+1][b][(2*y+ydiff)*(2*width)+2*x+xdiff]/4;
-            }
+        int id = y*width+x;
+        for (int n=0; n<4; n++) {
+          int idn = (2*y+(n&1))*(2*width)+2*x+(n/2);
+          for (int b=0; b<2; b++) {
+            portion[b][id] += old_portion[b][idn]/4;
           }
         }
 
-        for (int xdiff = 0; xdiff <= 1; xdiff++) {
-          for (int ydiff = 0; ydiff <= 1; ydiff++) {
-            for (int c=0; c<3; c++) {
-              original_list[raise][(y*width+x)*3+c] +=
-                original_list[raise+1][((2*y+ydiff)*(2*width)+2*x+xdiff)*3+c]/4;
+        int id3 = (y*width+x)*3;
+        for (int n=0; n<4; n++) {
+          int idn = (2*y+(n&1))*(2*width)+2*x+(n/2);
+          int idn3 = ((2*y+(n&1))*(2*width)+2*x+(n/2))*3;
+          for (int c=0; c<3; c++) {
+            original[id3+c] +=old_original[idn3+c]/4;
 
-              for (int b=0; b<2; b++) {
-                double new_ps = portion_list[raise][b][y*width+x];
-                if (new_ps > 0)
-                  color_list[raise][b][(y*width+x)*3+c] +=
-                    color_list[raise+1][b][((2*y+ydiff)*(2*width)+2*x+xdiff)*3+c]
-                    *portion_list[raise+1][b][(2*y+ydiff)*(2*width)+2*x+xdiff]
-                    /new_ps/4;
-              }
+            for (int b=0; b<2; b++) {
+              double cur_portion = portion[b][id];
+              if (cur_portion > 0)
+                color[b][id3+c] +=
+                  old_color[b][idn3+c] * old_portion[b][idn]
+                  / cur_portion / 4;
             }
           }
         }
