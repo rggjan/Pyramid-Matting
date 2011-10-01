@@ -293,19 +293,21 @@ int main() {
     double* old_portion[2] = {portion_list[raise-1][0],
                               portion_list[raise-1][1]};
 
+    alpha_list[raise] = new double[width*height];
+    for (int b=0; b<2; b++) {
+      final_list[raise][b] = new double[width*height*3];
+    }
+
     double* alpha = alpha_list[raise];
     double* old_alpha = alpha_list[raise-1];
     
     double* final[2] = {final_list[raise][0], final_list[raise][1]};
     double* old_final[2] = {final_list[raise-1][0], final_list[raise-1][1]};
 
-    alpha = new double[width*height];
-    for (int b=0; b<2; b++) {
-      final[b] = new double[width*height*3];
-    }
-
     for (int y=0; y<height; y+=2) {
       for (int x=0; x<width; x+=2) {
+        int old_id = (y/2*width/2+x/2);
+        int old_id3 = old_id*3;
 /*        double best_fbs[2][2][2][3];
         double best_score[2][2] = {{-1, -1}, {-1, -1}};
         
@@ -359,17 +361,15 @@ int main() {
           }
         }
 */
-        int id = (y*width+x);
-        int id3 = id*3;
         for (int n=0; n<4; n++) {
-          int idn = (y/2+(n&1))*(width/2)+x/2+(n/2);
+          int idn = ((y+(n&1))*width)+x+n/2;
           int idn3 = idn*3;
           for (int b=0; b<2; b++) {
             for (int c=0; c<3; c++) {
               double cur_portion = portion[b][idn];
 
               final[b][idn3+c] = cur_portion*color[b][idn3+c]+
-                (1-cur_portion)*old_final[b][id3+c];
+                (1-cur_portion)*old_final[b][old_id3+c];
             }
           }
           projection(&(final[0][idn3]),
