@@ -221,6 +221,8 @@ int main() {
   double* portion_list[raise+1][2];
   double* final_list[raise+1][2];
   double* alpha_list[raise+1];
+  int width_list[raise+1];
+  int height_list[raise+1];
 
   for (int y=0; y<height; y++) {
     for (int x=0; x<width; x++) {
@@ -247,6 +249,8 @@ int main() {
   color_list[raise][1] = background;
   portion_list[raise][1] = portion_background;
   mask_list[raise] = mask;
+  width_list[raise] = width;
+  height_list[raise] = height;
 
   static char buffer[100];
   snprintf(buffer, 100, RESULTS "originals_%i.ppm", raise);
@@ -276,6 +280,8 @@ int main() {
       color_list[raise][b] = new double[width*height*3]();
       portion_list[raise][b] =  new double[width*height]();
     }
+    height_list[raise] = height;
+    width_list[raise] = width;
 
     double* mask = mask_list[raise];
     double* old_mask = mask_list[raise+1];
@@ -362,7 +368,6 @@ int main() {
     save_image(buffer, width, height, 1, mask);
   }
   
-
   // Upscaling
   raise = 0;
   width = 1;
@@ -404,9 +409,12 @@ int main() {
   save_image(RESULTS "final_0.ppm", 1, 1, 3, final);
 
   while (raise < global_raise) {
-    width *= 2;
-    height *= 2;
     raise++;
+    int old_width = width;
+    int old_height = height;
+
+    width = width_list[raise];
+    height = height_list[raise];
     cout << "============= raise: " << raise << "=============" << endl;
 
     const double* original = original_list[raise];
@@ -435,7 +443,7 @@ int main() {
 
     for (int y=0; y<height; y+=2) {
       for (int x=0; x<width; x+=2) {
-        int old_id = (y/2*width/2+x/2);
+        int old_id = (y/2*old_width+x/2);
         int old_id3 = old_id*3;
         int id = y*width+x;
 
@@ -453,11 +461,11 @@ int main() {
           for (int bydiff=-b_radius; bydiff<=b_radius; bydiff++) {
             // Check if inside old image
             if (!(x/2 + bxdiff >= 0 && y/2 + bydiff >= 0
-                  && x/2 + bxdiff < width/2 && y/2 + bydiff < height/2))
+                  && x/2 + bxdiff < old_width && y/2 + bydiff < old_height))
               continue;
 
             // Set test background
-            int old_id_b = (y/2+bydiff)*width/2+x/2+bxdiff;
+            int old_id_b = (y/2+bydiff)*old_width+x/2+bxdiff;
             int old_id3_b = old_id_b*3;
              
             if (old_mask[old_id_b] == 1 || old_mask[old_id_b] == 0)
@@ -469,11 +477,11 @@ int main() {
               for (int fydiff=-f_radius; fydiff<=f_radius; fydiff++) {
                 // Check if inside old image
                 if (!(x/2 + fxdiff >= 0 && y/2 + fydiff >= 0
-                      && x/2 + fxdiff < width/2 && y/2 + fydiff < height/2))
+                      && x/2 + fxdiff < old_width && y/2 + fydiff < old_height))
                   continue;
 
                 // Set test foreground
-                int old_id_f = (y/2+fydiff)*width/2+x/2+fxdiff;
+                int old_id_f = (y/2+fydiff)*old_width+x/2+fxdiff;
                 int old_id3_f = old_id_f*3;
 
                 if (old_mask[old_id_f] == 1 || old_mask[old_id_f] == 0)
@@ -482,10 +490,14 @@ int main() {
                 test_color[0] = &(old_final[0][old_id3_f]);
 
                 for (int n=0; n<4; n++) {
-                  int idn = ((y+(n&1))*width)+x+n/2;
-                  if (mask[idn] == 1 || mask[idn] == 0)
+                  int ny = y+(n&1);
+                  int nx = x+n/2;
+                  if (nx >= width || ny >= height)
                     continue;
 
+                  int idn = ny*width+nx;
+                  if (mask[idn] == 1 || mask[idn] == 0)
+                    continue;
                   int idn3 = idn*3;
 
                   double test_merged[2][3];
@@ -516,7 +528,12 @@ int main() {
         }
         
         for (int n=0; n<4; n++) {
-          int idn = ((y+(n&1))*width)+x+n/2;
+          int ny = y+(n&1);
+          int nx = x+n/2;
+          if (nx >= width || ny >= height)
+            continue;
+
+          int idn = ny*width+nx;
 
           if (mask[idn] == 1 || mask[idn] == 0)
             continue;
