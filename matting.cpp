@@ -4,12 +4,10 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <string.h>
-#include <math.h>
+//#include <math.h>
 #include <limits.h>
 
 using namespace std;
-
-#define ID(x, y) ((y*width)+(x))
 
 double*
 load_image (const char* filename, int dimx, int dimy, int num_colors) {
@@ -46,6 +44,11 @@ save_image (const char* filename, int dimx, int dimy, int num_colors,
           d = 255;
         if (d<0)
           d = 0;
+
+        if (!(d<0 || d>=0)) {
+          cout << "NaN in image " << filename << " at position x/y: " << x << "/" << y << endl;
+          exit(1);
+        }
         char_data[(y*dimx+x)*num_colors+c] = d;
       }
     }
