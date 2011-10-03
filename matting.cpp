@@ -296,9 +296,13 @@ int main() {
         for (int n=0; n<4; n++) {
           int old_y = 2*y+(n&1);
           int old_x = 2*x+(n/2);
-          if (old_x >= old_width || old_y >= old_height)
-            continue;
-          counter++;
+          if (old_x < old_width && old_y < old_height)
+            counter++;
+        }
+
+        if (counter == 0) {
+          cout << "This should not happen!" << endl;
+          exit(1);
         }
 
         for (int n=0; n<4; n++) {
@@ -327,8 +331,8 @@ int main() {
           if (old_x >= old_width || old_y >= old_height)
             continue;
 
-          int idn = (2*y+(n&1))*(2*width)+2*x+(n/2);
-          int idn3 = ((2*y+(n&1))*(2*width)+2*x+(n/2))*3;
+          int idn = old_y*old_width+old_x;
+          int idn3 = idn*3;
           for (int c=0; c<3; c++) {
             original[id3+c] +=old_original[idn3+c]/counter;
 
