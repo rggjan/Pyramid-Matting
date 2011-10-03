@@ -4,29 +4,75 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <string.h>
-//#include <math.h>
+#include <math.h>
 #include <limits.h>
 
 using namespace std;
 
 double*
-load_image (const char* filename, int dimx, int dimy, int num_colors) {
-  unsigned char* data = new unsigned char[dimx*dimy*num_colors];
-  double* data_double = new double[dimx*dimy*num_colors];
+load_image (const char* filename, int* ret_width, int* ret_height, int* ret_num_colors) {
 
   FILE *fp = fopen (filename, "rb");
-  fread(data, 1, dimx*dimy*num_colors, fp);
+  
+  char buffer[100];
+  int num_colors = -1;
+  int width = -1, height = -1;
+  int max_value = -1;
+
+
+  while(num_colors == -1 || width == -1 || height == -1 || max_value == -1) {
+    if (fgets(buffer, 100, fp) == NULL) {
+      cout << "Could not read file " << filename << endl;
+      exit(1);
+    }
+
+    if (buffer[0] == '#')
+      continue;
+
+    if (num_colors == -1) {
+      if (strncmp(buffer, "P6", 2) == 0) {
+        num_colors = 3;
+      } else if (strncmp(buffer, "P5", 2) == 0) {
+        num_colors = 1;
+      } else {
+        cout << "Unknown format " << buffer << endl;
+        exit(1);
+      }
+    } else if (width == -1) {
+      if (sscanf(buffer, "%i %i", &width, &height) != 2) {
+        cout << "Could not read width/height" << endl;
+        exit(1);
+      }
+    } else {
+      if (sscanf(buffer, "%i", &max_value) != 1) {
+        cout << "Could not read max_value" << endl;
+        exit(1);
+      }
+    }
+  }
+
+  unsigned char* data = new unsigned char[width*height*num_colors];
+  double* data_double = new double[width*height*num_colors];
+  double max_value_d = max_value;
+
+
+  fread(data, 1, width*height*num_colors, fp);
   fclose (fp);
 
-  for (int y=0; y<dimy; y++) {
-    for (int x=0; x<dimx; x++) {
+  for (int y=0; y<height; y++) {
+    for (int x=0; x<width; x++) {
       for (int c=0; c<num_colors; c++) {
-        data_double[(y*dimx+x)*num_colors+c] = data[(y*dimx+x)*num_colors+c]/255.;
+        data_double[(y*width+x)*num_colors+c] = 
+          data[(y*width+x)*num_colors+c]/max_value_d;
       }
     }
   }
 
   delete[] data;
+
+  *ret_num_colors = num_colors;
+  *ret_width = width;
+  *ret_height = height;
   return data_double;
 }
 
@@ -45,7 +91,7 @@ save_image (const char* filename, int dimx, int dimy, int num_colors,
         if (d<0)
           d = 0;
 
-        if (!(d<0 || d>=0)) {
+        if (isnan(d)) {
           cout << "NaN in image " << filename << " at position x/y: " << x << "/" << y << endl;
           exit(1);
         }
@@ -134,9 +180,40 @@ int main() {
     return 1;
   }
 
-  int width = 512;
-  int height = 512;
-  int raise = 9;
+  int original_width;
+  int original_height;
+  int num_colors;
+
+  double* mask = load_image("trimap.pnm", &original_width, &original_height, &num_colors);
+  if (num_colors != 1) {
+    cerr << "num_colors != 1" << endl;
+    exit(1);
+  }
+
+  int new_width, new_height;
+
+  double* original = load_image("test.ppm", &new_width, &new_height, &num_colors);
+  if (num_colors != 3 || original_width != new_width || original_height != new_height) {
+    cout << "original wrong" << endl;
+  }
+
+  int global_raise = original_width>original_height?
+    original_width:original_height;
+  global_raise = ceil(log2(global_raise));
+  cout << "Width: " << original_width << endl;
+  cout << "Height: " << original_height << endl;
+  cout << "Raise: " << global_raise << endl;
+  cout << "=============" << endl;
+
+  int raise = global_raise;
+
+  int width = original_width;
+  int height = original_height;
+
+  double* foreground = new double[width*height*3]();
+  double* portion_foreground = new double[width*height]();
+  double* background = new double[width*height*3]();
+  double* portion_background = new double[width*height]();
 
   double* original_list[raise+1];
   double* mask_list[raise+1];
@@ -144,13 +221,6 @@ int main() {
   double* portion_list[raise+1][2];
   double* final_list[raise+1][2];
   double* alpha_list[raise+1];
-
-  double* mask = load_image("trimap.pnm", width, height, 1);
-  double* original = load_image("test.ppm", width, height, 3);
-  double* foreground = new double[width*height*3]();
-  double* portion_foreground = new double[width*height]();
-  double* background = new double[width*height*3]();
-  double* portion_background = new double[width*height]();
 
   for (int y=0; y<height; y++) {
     for (int x=0; x<width; x++) {
@@ -171,24 +241,34 @@ int main() {
     }
   }
   
-  original_list[9] = original;
-  color_list[9][0] = foreground;
-  portion_list[9][0] = portion_foreground;
-  color_list[9][1] = background;
-  portion_list[9][1] = portion_background;
-  mask_list[9] = mask;
+  original_list[raise] = original;
+  color_list[raise][0] = foreground;
+  portion_list[raise][0] = portion_foreground;
+  color_list[raise][1] = background;
+  portion_list[raise][1] = portion_background;
+  mask_list[raise] = mask;
 
-  save_image(RESULTS "originals_9.ppm", width, height, 3, original_list[9]);
-  save_image(RESULTS "foregrounds_9.ppm", width, height, 3, color_list[9][0]);
-  save_image(RESULTS "backgrounds_9.ppm", width, height, 3, color_list[9][1]);
-  save_image(RESULTS "masks_9.ppm", width, height, 1, mask_list[9]);
+  static char buffer[100];
+  snprintf(buffer, 100, RESULTS "originals_%i.ppm", raise);
+  save_image(buffer, width, height, 3, original_list[raise]);
+
+  snprintf(buffer, 100, RESULTS "foregrounds_%i.ppm", raise);
+  save_image(buffer, width, height, 3, color_list[raise][0]);
+
+  snprintf(buffer, 100, RESULTS "backgrounds_%i.ppm", raise);
+  save_image(buffer, width, height, 3, color_list[raise][1]);
+
+  snprintf(buffer, 100, RESULTS "masks_%i.ppm", raise);
+  save_image(buffer, width, height, 1, mask_list[raise]);
 
   while (raise > 0) {
     raise--;
 
     // Height half
-    height = height/2;
-    width = width/2;
+    int old_width = width;
+    int old_height = height;
+    width = (width+1)/2;
+    height = (height+1)/2;
 
     original_list[raise] = new double[width*height*3]();
     mask_list[raise] = new double[width*height]();
@@ -210,8 +290,25 @@ int main() {
     for (int y=0; y<height; y++) {
       for (int x=0; x<width; x++) {
         int id = y*width+x;
+
+        // Count number of available pixels
+        int counter = 0;
         for (int n=0; n<4; n++) {
-          int idn = (2*y+(n&1))*(2*width)+2*x+(n/2);
+          int old_y = 2*y+(n&1);
+          int old_x = 2*x+(n/2);
+          if (old_x >= old_width || old_y >= old_height)
+            continue;
+          counter++;
+        }
+
+        for (int n=0; n<4; n++) {
+          int old_y = 2*y+(n&1);
+          int old_x = 2*x+(n/2);
+          if (old_x >= old_width || old_y >= old_height)
+            continue;
+
+          int idn = (old_y)*(old_width)+old_x;
+
           if (n == 0)
             mask[id] = old_mask[idn];
           else
@@ -219,23 +316,28 @@ int main() {
               mask[id] = 0.5;
 
           for (int b=0; b<2; b++) {
-            portion[b][id] += old_portion[b][idn]/4;
+            portion[b][id] += old_portion[b][idn]/counter;
           }
         }
 
         int id3 = (y*width+x)*3;
         for (int n=0; n<4; n++) {
+          int old_y = 2*y+(n&1);
+          int old_x = 2*x+(n/2);
+          if (old_x >= old_width || old_y >= old_height)
+            continue;
+
           int idn = (2*y+(n&1))*(2*width)+2*x+(n/2);
           int idn3 = ((2*y+(n&1))*(2*width)+2*x+(n/2))*3;
           for (int c=0; c<3; c++) {
-            original[id3+c] +=old_original[idn3+c]/4;
+            original[id3+c] +=old_original[idn3+c]/counter;
 
             for (int b=0; b<2; b++) {
               double cur_portion = portion[b][id];
               if (cur_portion > 0)
                 color[b][id3+c] +=
                   old_color[b][idn3+c] * old_portion[b][idn]
-                  / cur_portion / 4;
+                  / cur_portion / counter;
             }
           }
         }
@@ -297,7 +399,7 @@ int main() {
   }
   save_image(RESULTS "final_0.ppm", 1, 1, 3, final);
 
-  while (raise < 9) {
+  while (raise < global_raise) {
     width *= 2;
     height *= 2;
     raise++;
