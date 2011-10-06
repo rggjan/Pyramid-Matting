@@ -9,6 +9,8 @@
 
 using namespace std;
 
+const char* result_name;
+
 double*
 load_image (const char* filename, int* ret_width, int* ret_height, int* ret_num_colors) {
 
@@ -101,6 +103,10 @@ save_image (const char* filename, int dimx, int dimy, int num_colors,
   }
 
   FILE *fp = fopen (filename, "wb");
+  if (fp == NULL) {
+    cout << "Could not open file " << endl;
+    exit(0);
+  }
   
   if (num_colors == 3)
     {
@@ -120,6 +126,12 @@ save_image (const char* filename, int dimx, int dimy, int num_colors,
   fclose (fp);
 
   delete[] char_data;
+}
+
+static void save_result(const char* name, double* data, int raise, int num_colors, int width, int height) {
+  char buffer[100];
+  snprintf(buffer, 100, "%s/%s_%i.ppm", result_name, name, raise);
+  save_image(buffer, width, height, num_colors, data);
 }
 
 double projection (const double F[3],
@@ -161,16 +173,21 @@ double projection (const double F[3],
   return quality;
 }
 
-#define RESULTS "results/"
+int main(int argc, char* argv[]) {
+  if (argc != 4) {
+    cout << "Usage: matting image.ppm trimap.pnm folder\n";
+    exit(0);
+  }
 
-int main() {
+  result_name = argv[3];
+
   // ensure the "result" directory exists
   struct stat result_dir;
-  if (stat(RESULTS, &result_dir) < 0) {
+  if (stat(result_name, &result_dir) < 0) {
     int err = errno;
     if (err == ENOENT) {
       // create directory
-      mkdir(RESULTS, 0777);
+      mkdir(result_name, 0777);
     } else {
       cerr << "Error while testing existence of 'results' directory: " << strerror(err) << '\n';
       return 1;
@@ -184,7 +201,7 @@ int main() {
   int original_height;
   int num_colors;
 
-  double* mask = load_image("trimap.pnm", &original_width, &original_height, &num_colors);
+  double* mask = load_image(argv[2], &original_width, &original_height, &num_colors);
   if (num_colors != 1) {
     cerr << "num_colors != 1" << endl;
     exit(1);
@@ -192,7 +209,7 @@ int main() {
 
   int new_width, new_height;
 
-  double* original = load_image("test.ppm", &new_width, &new_height, &num_colors);
+  double* original = load_image(argv[1], &new_width, &new_height, &num_colors);
   if (num_colors != 3 || original_width != new_width || original_height != new_height) {
     cout << "original wrong" << endl;
   }
@@ -252,18 +269,10 @@ int main() {
   width_list[raise] = width;
   height_list[raise] = height;
 
-  static char buffer[100];
-  snprintf(buffer, 100, RESULTS "originals_%i.ppm", raise);
-  save_image(buffer, width, height, 3, original_list[raise]);
-
-  snprintf(buffer, 100, RESULTS "foregrounds_%i.ppm", raise);
-  save_image(buffer, width, height, 3, color_list[raise][0]);
-
-  snprintf(buffer, 100, RESULTS "backgrounds_%i.ppm", raise);
-  save_image(buffer, width, height, 3, color_list[raise][1]);
-
-  snprintf(buffer, 100, RESULTS "masks_%i.ppm", raise);
-  save_image(buffer, width, height, 1, mask_list[raise]);
+  save_result("originals", original, raise, 3, width, height);
+  save_result("foregrounds", color_list[raise][0], raise, 3, width, height);
+  save_result("backgrounds", color_list[raise][1], raise, 3, width, height);
+  save_result("masks", mask_list[raise], raise, 1, width, height);
 
   while (raise > 0) {
     raise--;
@@ -354,18 +363,10 @@ int main() {
       }
     }
 
-    static char buffer[100];
-    snprintf(buffer, 100, RESULTS "originals_%i.ppm", raise);
-    save_image(buffer, width, height, 3, original);
-    
-    snprintf(buffer, 100, RESULTS "foregrounds_%i.ppm", raise);
-    save_image(buffer, width, height, 3, color[0]);
-    
-    snprintf(buffer, 100, RESULTS "backgrounds_%i.ppm", raise);
-    save_image(buffer, width, height, 3, color[1]);
-  
-    snprintf(buffer, 100, RESULTS "masks_%i.ppm", raise);
-    save_image(buffer, width, height, 1, mask);
+    save_result("originals", original, raise, 3, width, height);
+    save_result("foregrounds", color[0], raise, 3, width, height);
+    save_result("backgrounds", color[1], raise, 3, width, height);
+    save_result("masks", mask, raise, 1, width, height);
   }
   
   // Upscaling
@@ -395,20 +396,28 @@ int main() {
   projection(final_list[0][0], final_list[0][1],
       merged_point, &(alpha_list[0][0]));
 
-  save_image(RESULTS "new_foregrounds_0.ppm", 1, 1, 3, final_list[0][0]);
-  save_image(RESULTS "new_backgrounds_0.ppm", 1, 1, 3, final_list[0][1]);
-  save_image(RESULTS "new_alphas_0.ppm", 1, 1, 1, alpha_list[0]);
+  while (raise <= global_raise) {
+    double *tmp = new double[width*height*3]();
+    for (int y=0; y<height; y++) {
+      for (int x=0; x<width; x++) {
+        int id = y*width+x;
+        int id3 = id*3;
+        for (int c=0; c<3; c++) {
+          tmp[id3+c] = portion_list[raise][0][id]*color_list[raise][0][id3+c]
+            +final_list[raise][0][id3+c]*alpha_list[raise][id]
+            *(1-portion_list[raise][0][id]-portion_list[raise][1][id]);
+        }
+      }
+    }
+    save_result("final", tmp, raise, 3, width, height);
+    delete[] tmp;
+    save_result("new_foregrounds", final_list[raise][0], raise, 3, width, height);
+    save_result("new_backgrounds", final_list[raise][1], raise, 3, width, height);
+    save_result("new_alphas", alpha_list[raise], raise, 1, width, height);
 
+    if (raise == global_raise)
+      exit(0);
 
-  double final[3];
-  for (int c=0; c<3; c++) {
-    final[c] = portion_list[0][0][0]*color_list[0][0][c]
-      +final_list[0][0][c]*alpha_list[0][0]
-      *(1-portion_list[0][0][0]-portion_list[0][1][0]);
-  }
-  save_image(RESULTS "final_0.ppm", 1, 1, 3, final);
-
-  while (raise < global_raise) {
     raise++;
     int old_width = width;
     int old_height = height;
@@ -418,14 +427,14 @@ int main() {
     cout << "============= raise: " << raise << "=============" << endl;
 
     const double* original = original_list[raise];
-    const double* old_original = original_list[raise-1];
+    // const double* old_original = original_list[raise-1];
 
     const double* color[2] = {color_list[raise][0], color_list[raise][1]};
-    const double* old_color[2] = {color_list[raise-1][0], color_list[raise-1][1]};
+    // const double* old_color[2] = {color_list[raise-1][0], color_list[raise-1][1]};
 
     const double* portion[2] = {portion_list[raise][0], portion_list[raise][1]};
-    const double* old_portion[2] = {portion_list[raise-1][0],
-      portion_list[raise-1][1]};
+    // const double* old_portion[2] = {portion_list[raise-1][0],
+    //   portion_list[raise-1][1]};
 
     const double* mask = mask_list[raise];
     const double* old_mask = mask_list[raise-1];
@@ -436,7 +445,7 @@ int main() {
     }
 
     double* alpha = alpha_list[raise];
-    double* old_alpha = alpha_list[raise-1];
+    // double* old_alpha = alpha_list[raise-1];
     
     double* final[2] = {final_list[raise][0], final_list[raise][1]};
     double* old_final[2] = {final_list[raise-1][0], final_list[raise-1][1]};
@@ -444,8 +453,8 @@ int main() {
     for (int y=0; y<height; y+=2) {
       for (int x=0; x<width; x+=2) {
         int old_id = (y/2*old_width+x/2);
-        int old_id3 = old_id*3;
-        int id = y*width+x;
+        // int old_id3 = old_id*3;
+        // int id = y*width+x;
 
         if (old_mask[old_id] == 1 || old_mask[old_id] == 0)
           continue;
@@ -560,32 +569,6 @@ int main() {
       }
     }
 
-    static char buffer[100];
-    snprintf(buffer, 100, RESULTS "final_%i.ppm", raise);
-    double *tmp = new double[width*height*3]();
-    for (int y=0; y<height; y++) {
-      for (int x=0; x<width; x++) {
-        int id = y*width+x;
-        int id3 = id*3;
-        for (int c=0; c<3; c++) {
-          tmp[id3+c] = portion[0][id]*color[0][id3+c]
-            +final[0][id3+c]*alpha[id]
-            *(1-portion[0][id]-portion[1][id]);
-        }
-      }
-    }
-    save_image(buffer, width, height, 3, tmp);
-    delete[] tmp;
-
-    snprintf(buffer, 100, RESULTS "new_foregrounds_%i.ppm", raise);
-    save_image(buffer, width, height, 3, final[0]);
-    
-    snprintf(buffer, 100, RESULTS "new_backgrounds_%i.ppm", raise);
-    save_image(buffer, width, height, 3, final[1]);
-    
-    snprintf(buffer, 100, RESULTS "new_alphas_%i.ppm", raise);
-    save_image(buffer, width, height, 1, alpha);
-    
   }
 /*
   // cleanup (not strictly needed, but makes valgrind output cleaner)
