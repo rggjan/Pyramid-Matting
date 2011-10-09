@@ -461,7 +461,7 @@ int main(int argc, char* argv[]) {
     for (int y=0; y<height; y+=2) {
       for (int x=0; x<width; x+=2) {
         int old_id = (y/2*old_width+x/2);
-        // int old_id3 = old_id*3;
+        int old_id3 = old_id*3;
         // int id = y*width+x;
 
         if (old_mask[old_id] == 1 || old_mask[old_id] == 0)
@@ -564,7 +564,7 @@ int main(int argc, char* argv[]) {
 
               final[b][idn3+c] = ratio*color[b][idn3+c]+
                 (1-ratio)*
-                best_color[n][b][c];
+                (best_color[n][b][c]*raise+old_final[b][old_id3+c]*(global_raise-raise))/global_raise;
             }
           }
 
