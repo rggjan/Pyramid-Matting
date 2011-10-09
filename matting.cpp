@@ -402,10 +402,18 @@ int main(int argc, char* argv[]) {
       for (int x=0; x<width; x++) {
         int id = y*width+x;
         int id3 = id*3;
+        double grey;
+        if ((((int)(x/8))+((int)(y/8)))%2 == 0)
+          grey = 153/255.;
+        else
+          grey = 102/255.;
         for (int c=0; c<3; c++) {
-          tmp[id3+c] = portion_list[raise][0][id]*color_list[raise][0][id3+c]
-            +final_list[raise][0][id3+c]*alpha_list[raise][id]
-            *(1-portion_list[raise][0][id]-portion_list[raise][1][id]);
+          double portion_part = portion_list[raise][0][id];
+          double alpha_part = (1-portion_list[raise][0][id]-portion_list[raise][1][id])
+            *alpha_list[raise][id];
+          tmp[id3+c] = portion_part*color_list[raise][0][id3+c]
+            +alpha_part*final_list[raise][0][id3+c]
+            +(1-alpha_part-portion_part) * grey;
         }
       }
     }
