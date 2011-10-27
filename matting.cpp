@@ -9,7 +9,7 @@
 
 using namespace std;
 
-const char* result_name;
+const char* result_name = NULL;
 
 double*
 load_image (const char* filename, int* ret_width, int* ret_height, int* ret_num_colors) {
@@ -174,12 +174,21 @@ double projection (const double F[3],
 }
 
 int main(int argc, char* argv[]) {
-  if (argc != 4) {
-    cout << "Usage: matting image.ppm trimap.pnm folder\n";
-    exit(0);
-  }
+  char* trimap_name = NULL;
+  char* image_name = NULL;
 
-  result_name = argv[3];
+  bool debug = false;
+  for (int i=1; i<argc; i++)
+    if (strcmp(argv[i], "--debug") == 0)
+      debug = true;
+    else if (image_name == NULL)
+      image_name = argv[i];
+    else if (trimap_name == NULL)
+      trimap_name = argv[i];
+    else if (result_name == NULL)
+      result_name = argv[i];
+    else
+      cout << "Usage: matting image.ppm trimap.pnm folder [--debug]\n";
 
   // ensure the "result" directory exists
   struct stat result_dir;
@@ -201,7 +210,7 @@ int main(int argc, char* argv[]) {
   int original_height;
   int num_colors;
 
-  double* mask = load_image(argv[2], &original_width, &original_height, &num_colors);
+  double* mask = load_image(trimap_name, &original_width, &original_height, &num_colors);
   if (num_colors != 1) {
     cerr << "num_colors != 1" << endl;
     exit(1);
@@ -209,7 +218,7 @@ int main(int argc, char* argv[]) {
 
   int new_width, new_height;
 
-  double* original = load_image(argv[1], &new_width, &new_height, &num_colors);
+  double* original = load_image(image_name, &new_width, &new_height, &num_colors);
   if (num_colors != 3 || original_width != new_width || original_height != new_height) {
     cout << "original wrong" << endl;
   }
@@ -269,10 +278,12 @@ int main(int argc, char* argv[]) {
   width_list[raise] = width;
   height_list[raise] = height;
 
-  save_result("originals", original, raise, 3, width, height);
-  save_result("foregrounds", color_list[raise][0], raise, 3, width, height);
-  save_result("backgrounds", color_list[raise][1], raise, 3, width, height);
-  save_result("masks", mask_list[raise], raise, 1, width, height);
+  if (!debug) {
+    save_result("originals", original, raise, 3, width, height);
+    save_result("foregrounds", color_list[raise][0], raise, 3, width, height);
+    save_result("backgrounds", color_list[raise][1], raise, 3, width, height);
+    save_result("masks", mask_list[raise], raise, 1, width, height);
+  }
 
   while (raise > 0) {
     raise--;
@@ -363,10 +374,12 @@ int main(int argc, char* argv[]) {
       }
     }
 
-    save_result("originals", original, raise, 3, width, height);
-    save_result("foregrounds", color[0], raise, 3, width, height);
-    save_result("backgrounds", color[1], raise, 3, width, height);
-    save_result("masks", mask, raise, 1, width, height);
+    if (!debug) {
+      save_result("originals", original, raise, 3, width, height);
+      save_result("foregrounds", color[0], raise, 3, width, height);
+      save_result("backgrounds", color[1], raise, 3, width, height);
+      save_result("masks", mask, raise, 1, width, height);
+    }
   }
   
   // Upscaling
@@ -397,31 +410,33 @@ int main(int argc, char* argv[]) {
       merged_point, &(alpha_list[0][0]));
 
   while (raise <= global_raise) {
-    double *tmp = new double[width*height*3]();
-    for (int y=0; y<height; y++) {
-      for (int x=0; x<width; x++) {
-        int id = y*width+x;
-        int id3 = id*3;
-        double grey;
-        if ((((int)(x/8))+((int)(y/8)))%2 == 0)
-          grey = 153/255.;
-        else
-          grey = 102/255.;
-        for (int c=0; c<3; c++) {
-          double portion_part = portion_list[raise][0][id];
-          double alpha_part = (1-portion_list[raise][0][id]-portion_list[raise][1][id])
-            *alpha_list[raise][id];
-          tmp[id3+c] = portion_part*color_list[raise][0][id3+c]
-            +alpha_part*final_list[raise][0][id3+c]
-            +(1-alpha_part-portion_part) * grey;
+    if (!debug || raise == global_raise) {
+      double *tmp = new double[width*height*3]();
+      for (int y=0; y<height; y++) {
+        for (int x=0; x<width; x++) {
+          int id = y*width+x;
+          int id3 = id*3;
+          double grey;
+          if ((((int)(x/8))+((int)(y/8)))%2 == 0)
+            grey = 153/255.;
+          else
+            grey = 102/255.;
+          for (int c=0; c<3; c++) {
+            double portion_part = portion_list[raise][0][id];
+            double alpha_part = (1-portion_list[raise][0][id]-portion_list[raise][1][id])
+              *alpha_list[raise][id];
+            tmp[id3+c] = portion_part*color_list[raise][0][id3+c]
+              +alpha_part*final_list[raise][0][id3+c]
+              +(1-alpha_part-portion_part) * grey;
+          }
         }
       }
+      save_result("final", tmp, raise, 3, width, height);
+      delete[] tmp;
+      save_result("new_foregrounds", final_list[raise][0], raise, 3, width, height);
+      save_result("new_backgrounds", final_list[raise][1], raise, 3, width, height);
+      save_result("new_alphas", alpha_list[raise], raise, 1, width, height);
     }
-    save_result("final", tmp, raise, 3, width, height);
-    delete[] tmp;
-    save_result("new_foregrounds", final_list[raise][0], raise, 3, width, height);
-    save_result("new_backgrounds", final_list[raise][1], raise, 3, width, height);
-    save_result("new_alphas", alpha_list[raise], raise, 1, width, height);
 
     if (raise == global_raise)
       exit(0);
