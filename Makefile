@@ -1,6 +1,14 @@
 run: matting
 	./matting test.ppm trimap.pnm results --debug --gt GT02.pnm
 
+batch: matting
+	./batch.rb
+	for input in test/input/*; do \
+	  name=${input:%.ppm=%}; \
+	  echo $$name; \
+	  echo $$input; \
+	done
+
 gdb: matting_debug
 	gdb ./matting_debug
 

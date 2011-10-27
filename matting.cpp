@@ -475,7 +475,7 @@ int main(int argc, char* argv[]) {
     }
 
     double* alpha = alpha_list[raise];
-    // double* old_alpha = alpha_list[raise-1];
+    double* old_alpha = alpha_list[raise-1];
     
     double* final[2] = {final_list[raise][0], final_list[raise][1]};
     double* old_final[2] = {final_list[raise-1][0], final_list[raise-1][1]};
@@ -495,17 +495,19 @@ int main(int argc, char* argv[]) {
 
         double* test_color[2];
 
-        const int f_radius = 2;
-        const int b_radius = f_radius;
-        for (int bxdiff=-b_radius; bxdiff<=b_radius; bxdiff++) {
-          for (int bydiff=-b_radius; bydiff<=b_radius; bydiff++) {
+        int positions[] = {-8, -3, -1, 0, 1, 3, 8};
+//        int positions[] = {-2, -1, 0, 1, 2};
+        int num_pos = 7;
+
+        for (int bxdiff=0; bxdiff<num_pos; bxdiff++) {
+          for (int bydiff=0; bydiff<num_pos; bydiff++) {
             // Check if inside old image
-            if (!(x/2 + bxdiff >= 0 && y/2 + bydiff >= 0
-                  && x/2 + bxdiff < old_width && y/2 + bydiff < old_height))
+            if (!(x/2 + positions[bxdiff] >= 0 && y/2 + positions[bydiff] >= 0
+                  && x/2 + positions[bxdiff] < old_width && y/2 + positions[bydiff] < old_height))
               continue;
 
             // Set test background
-            int old_id_b = (y/2+bydiff)*old_width+x/2+bxdiff;
+            int old_id_b = (y/2+positions[bydiff])*old_width+x/2+positions[bxdiff];
             int old_id3_b = old_id_b*3;
              
             if (old_mask[old_id_b] == 1 || old_mask[old_id_b] == 0)
@@ -513,15 +515,15 @@ int main(int argc, char* argv[]) {
 
             test_color[1] = &(old_final[1][old_id3_b]);
 
-            for (int fxdiff=-f_radius; fxdiff<=f_radius; fxdiff++) {
-              for (int fydiff=-f_radius; fydiff<=f_radius; fydiff++) {
+            for (int fxdiff=0; fxdiff<num_pos; fxdiff++) {
+              for (int fydiff=0; fydiff<num_pos; fydiff++) {
                 // Check if inside old image
-                if (!(x/2 + fxdiff >= 0 && y/2 + fydiff >= 0
-                      && x/2 + fxdiff < old_width && y/2 + fydiff < old_height))
+                if (!(x/2 + positions[fxdiff] >= 0 && y/2 + positions[fydiff] >= 0
+                      && x/2 + positions[fxdiff] < old_width && y/2 + positions[fydiff] < old_height))
                   continue;
 
                 // Set test foreground
-                int old_id_f = (y/2+fydiff)*old_width+x/2+fxdiff;
+                int old_id_f = (y/2+positions[fydiff])*old_width+x/2+positions[fxdiff];
                 int old_id3_f = old_id_f*3;
 
                 if (old_mask[old_id_f] == 1 || old_mask[old_id_f] == 0)
@@ -552,8 +554,15 @@ int main(int argc, char* argv[]) {
                     }
                   }
 
+                  double diff = positions[bxdiff]*positions[bxdiff]
+                    +positions[bydiff]*positions[bydiff]
+                    +positions[fxdiff]*positions[fxdiff]
+                    +positions[fydiff]*positions[fydiff];
+                  diff = sqrt(diff);
+                  diff /= 10000;
+
                   double score = projection(test_merged[0], test_merged[1],
-                      &(original[idn3]), &proj_a)+(fxdiff*fxdiff+fydiff*fydiff+bxdiff*bxdiff+bydiff*bydiff)/10;
+                      &(original[idn3]), &proj_a)+diff;
 
                   if (score < best_score[n]) {
                     best_score[n] = score;
@@ -588,6 +597,7 @@ int main(int argc, char* argv[]) {
               final[b][idn3+c] = ratio*color[b][idn3+c]+
                 (1-ratio)*
                 (best_color[n][b][c]*raise+old_final[b][old_id3+c]*(global_raise-raise))/global_raise;
+                //(best_color[n][b][c]+old_final[b][old_id3+c])/2;
             }
           }
 
@@ -595,6 +605,8 @@ int main(int argc, char* argv[]) {
                      &(final[1][idn3]),
                      &(original[idn3]),
                      &(alpha[idn]));
+
+          //alpha[idn] = (alpha[idn]*raise + old_alpha[old_id]*(global_raise-raise))/global_raise;
         }
       }
     }
