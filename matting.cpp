@@ -446,7 +446,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (raise == global_raise)
-      exit(0);
+      break;
 
     raise++;
     int old_width = width;
@@ -599,31 +599,35 @@ int main(int argc, char* argv[]) {
         }
       }
     }
-
   }
-/*
-  // cleanup (not strictly needed, but makes valgrind output cleaner)
-  delete[] mask;
 
-  for (int i = 0; i < raise; i++) {
-    for (int j = 0; j < 2; j++) {
-      delete[] originals[i][j];
-      delete[] foregrounds[i][j];
-      delete[] foreground_ps[i][j];
-      delete[] backgrounds[i][j];
-      delete[] background_ps[i][j];
-      delete[] new_foregrounds[i][j];
-      delete[] new_backgrounds[i][j];
-      delete[] new_alphas[i][j];
+  if (gt != NULL) {
+    // Compare to ground truth, if we have one
+    char buffer[100];
+    snprintf(buffer, 100, "%s/new_alphas_%i.ppm", result_name, raise);
+    
+    unsigned char* result;
+    unsigned char* ground_truth;
+
+    int new_width;
+    int new_height;
+    int num_colors;
+    load_image(gt, &new_width, &new_height, &num_colors, &ground_truth, NULL);
+    if (num_colors != 1 || new_width != original_width || new_height != original_height) {
+      cerr << "ground truth wrong!" << endl;
+      exit(1);
     }
+
+    load_image(buffer, &width, &height, &num_colors, &result, NULL);
+
+    int sum = 0;
+    for (int x=0; x<height*width; x++) {
+      if (mask[x] != 0 && mask[x] != 1) {
+        int diff = ground_truth[x] - result[x];
+        sum += abs(diff);
+      }
+    }
+    cout << "SAD: " << ((double)sum)/(width*height) << endl;
   }
 
-  delete[] originals[9][0];
-  delete[] foregrounds[9][0];
-  delete[] foreground_ps[9][0];
-  delete[] backgrounds[9][0];
-  delete[] background_ps[9][0];
-  delete[] new_foregrounds[9][0];
-  delete[] new_backgrounds[9][0];
-  delete[] new_alphas[9][0];*/
 }
