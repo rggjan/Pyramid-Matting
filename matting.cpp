@@ -11,16 +11,13 @@ using namespace std;
 
 const char* result_name = NULL;
 
-double*
-load_image (const char* filename, int* ret_width, int* ret_height, int* ret_num_colors) {
-
+void load_image (const char* filename, int* ret_width, int* ret_height, int* ret_num_colors, unsigned char** data_char, double** data_double) {
   FILE *fp = fopen (filename, "rb");
   
   char buffer[100];
   int num_colors = -1;
   int width = -1, height = -1;
   int max_value = -1;
-
 
   while(num_colors == -1 || width == -1 || height == -1 || max_value == -1) {
     if (fgets(buffer, 100, fp) == NULL) {
@@ -54,28 +51,32 @@ load_image (const char* filename, int* ret_width, int* ret_height, int* ret_num_
   }
 
   unsigned char* data = new unsigned char[width*height*num_colors];
-  double* data_double = new double[width*height*num_colors];
-  double max_value_d = max_value;
-
-
+  
   fread(data, 1, width*height*num_colors, fp);
   fclose (fp);
 
-  for (int y=0; y<height; y++) {
-    for (int x=0; x<width; x++) {
-      for (int c=0; c<num_colors; c++) {
-        data_double[(y*width+x)*num_colors+c] = 
-          data[(y*width+x)*num_colors+c]/max_value_d;
+  if (data_double != NULL) {
+    *data_double = new double[width*height*num_colors];
+    double max_value_d = max_value;
+
+    for (int y=0; y<height; y++) {
+      for (int x=0; x<width; x++) {
+        for (int c=0; c<num_colors; c++) {
+          (*data_double)[(y*width+x)*num_colors+c] = 
+            data[(y*width+x)*num_colors+c]/max_value_d;
+        }
       }
     }
   }
 
-  delete[] data;
+  if (data_char == NULL)
+    delete[] data_char;
+  else
+    *data_char = data;
 
   *ret_num_colors = num_colors;
   *ret_width = width;
   *ret_height = height;
-  return data_double;
 }
 
 void
@@ -214,16 +215,17 @@ int main(int argc, char* argv[]) {
   int original_width;
   int original_height;
   int num_colors;
+  double* mask;
 
-  double* mask = load_image(trimap_name, &original_width, &original_height, &num_colors);
+  load_image(trimap_name, &original_width, &original_height, &num_colors, NULL, &mask);
   if (num_colors != 1) {
     cerr << "num_colors != 1" << endl;
     exit(1);
   }
 
   int new_width, new_height;
-
-  double* original = load_image(image_name, &new_width, &new_height, &num_colors);
+  double* original;
+  load_image(image_name, &new_width, &new_height, &num_colors, NULL, &original);
   if (num_colors != 3 || original_width != new_width || original_height != new_height) {
     cout << "original wrong" << endl;
   }
