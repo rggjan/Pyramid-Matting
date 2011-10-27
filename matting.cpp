@@ -553,7 +553,7 @@ int main(int argc, char* argv[]) {
                   }
 
                   double score = projection(test_merged[0], test_merged[1],
-                      &(original[idn3]), &proj_a);
+                      &(original[idn3]), &proj_a)+(fxdiff*fxdiff+fydiff*fydiff+bxdiff*bxdiff+bydiff*bydiff)/10;
 
                   if (score < best_score[n]) {
                     best_score[n] = score;
@@ -590,7 +590,6 @@ int main(int argc, char* argv[]) {
                 (best_color[n][b][c]*raise+old_final[b][old_id3+c]*(global_raise-raise))/global_raise;
             }
           }
-
 
           projection(&(final[0][idn3]),
                      &(final[1][idn3]),
