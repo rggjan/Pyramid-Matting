@@ -598,6 +598,7 @@ int main(int argc, char* argv[]) {
                 (1-ratio)*
                 (best_color[n][b][c]*raise+old_final[b][old_id3+c]*(global_raise-raise))/global_raise;
                 //(best_color[n][b][c]+old_final[b][old_id3+c])/2;
+                //(best_color[n][b][c]+old_final[b][old_id3+c])/2;
             }
           }
 
