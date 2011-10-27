@@ -301,7 +301,7 @@ int main(int argc, char* argv[]) {
     double* portion[2] = {portion_list[raise][0], portion_list[raise][1]};
     double* old_portion[2] = {portion_list[raise+1][0],
                               portion_list[raise+1][1]};
-  
+    #pragma omp parallel for
     for (int y=0; y<height; y++) {
       for (int x=0; x<width; x++) {
         int id = y*width+x;
@@ -458,6 +458,7 @@ int main(int argc, char* argv[]) {
     double* final[2] = {final_list[raise][0], final_list[raise][1]};
     double* old_final[2] = {final_list[raise-1][0], final_list[raise-1][1]};
 
+    #pragma omp parallel for
     for (int y=0; y<height; y+=2) {
       for (int x=0; x<width; x+=2) {
         int old_id = (y/2*old_width+x/2);
