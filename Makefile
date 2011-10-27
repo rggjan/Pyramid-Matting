@@ -1,5 +1,5 @@
 run: matting
-	./matting test.ppm trimap.pnm results --debug
+	./matting test.ppm trimap.pnm results --debug --gt GT02.pnm
 
 gdb: matting_debug
 	gdb ./matting_debug

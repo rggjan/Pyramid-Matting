@@ -176,19 +176,24 @@ double projection (const double F[3],
 int main(int argc, char* argv[]) {
   char* trimap_name = NULL;
   char* image_name = NULL;
+  char* gt = NULL;
 
   bool debug = false;
   for (int i=1; i<argc; i++)
     if (strcmp(argv[i], "--debug") == 0)
       debug = true;
+    else if (strcmp(argv[i], "--gt") == 0)
+      gt = argv[++i];
     else if (image_name == NULL)
       image_name = argv[i];
     else if (trimap_name == NULL)
       trimap_name = argv[i];
     else if (result_name == NULL)
       result_name = argv[i];
-    else
-      cout << "Usage: matting image.ppm trimap.pnm folder [--debug]\n";
+    else {
+      cout << "Usage: matting image.ppm trimap.pnm folder [--debug] [--gt ground_truth.pnm]\n";
+      exit(0);
+    }
 
   // ensure the "result" directory exists
   struct stat result_dir;
