@@ -495,9 +495,9 @@ int main(int argc, char* argv[]) {
 
         double* test_color[2];
 
-        int positions[] = {-8, -3, -1, 0, 1, 3, 8};
+        int positions[] = {-16, -4, -1, 0, 1, 4, 16};
 //        int positions[] = {-2, -1, 0, 1, 2};
-        int num_pos = 7;
+        int num_pos = sizeof(positions)/sizeof(positions[0]);
 
         for (int bxdiff=0; bxdiff<num_pos; bxdiff++) {
           for (int bydiff=0; bydiff<num_pos; bydiff++) {
@@ -559,7 +559,7 @@ int main(int argc, char* argv[]) {
                     +positions[fxdiff]*positions[fxdiff]
                     +positions[fydiff]*positions[fydiff];
                   diff = sqrt(diff);
-                  diff /= 10000;
+                  diff /= 5000;
 
                   double score = projection(test_merged[0], test_merged[1],
                       &(original[idn3]), &proj_a)+diff;
